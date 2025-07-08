@@ -10,31 +10,15 @@ import {
   FaCalendarCheck,
   FaCircle,
 } from "react-icons/fa";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  addDriver,
+  deleteDriver,
+} from "@/utils/redux/features/drivers/deiversSlice";
 
 export default function DriversPage() {
-  const drivers = [
-    {
-      name: "Rajesh Kumar",
-      assignedTo: "Express 1",
-      phone: "+91 9876543210",
-      joined: "May 10, 2025",
-      status: "Active",
-    },
-    {
-      name: "Sunil Patil",
-      assignedTo: "Express 2",
-      phone: "+91 8765432109",
-      joined: "Apr 15, 2025",
-      status: "Active",
-    },
-    {
-      name: "Amit Sharma",
-      assignedTo: "Night Rider",
-      phone: "+91 7654321098",
-      joined: "Mar 22, 2025",
-      status: "Active",
-    },
-  ];
+  const drivers = useSelector((state) => state.drivers);
+  const dispatch = useDispatch();
 
   const [driverPhone, setDriverPhone] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -47,6 +31,7 @@ export default function DriversPage() {
   };
 
   const handleCancel = () => {
+    setShowForm(false);
     setDriverPhone("");
   };
 
@@ -100,6 +85,7 @@ export default function DriversPage() {
                   {driver.name}
                 </h2>
                 <button
+                  onClick={() => dispatch(deleteDriver(driver.id))}
                   title="Remove Driver"
                   className="bg-[#007bff1a] text-[#004aad] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
                 >
@@ -172,7 +158,7 @@ export default function DriversPage() {
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="bg-white text-gray-600 text-xs font-base border border-gray-300 rounded-md px-3 py-2 hover:bg-[#f5f7fa] transition duration-200"
+                  className="bg-white text-gray-600 text-xs font-base border border-gray-300 rounded-md px-3 py-2 hover:bg-[#f5f7fa] transition duration-200 cursor-pointer"
                 >
                   Cancel
                 </button>

@@ -11,18 +11,29 @@ import {
 } from "react-icons/fa";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  addBus,
+  editBus,
+  deleteBus,
+} from "@/utils/redux/features/buses/busesSlice";
 
 export default function BusesPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const [showForm, setShowForm] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedBusId, setSelectedBusId] = useState(null);
+
+  const dispatch = useDispatch();
+  const busInfo = useSelector((state) => state.buses); //
 
   useEffect(() => {
     if (searchParams.get("add") === "true") {
       setShowForm(true);
     }
-  }, [searchParams]);
+  }, [dispatch, searchParams, busInfo.length]);
 
   const [busData, setBusData] = useState({
     busName: "",
@@ -35,7 +46,25 @@ export default function BusesPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert("Bus added successfully!");
+
+    const newBus = {
+      id: editMode ? selectedBusId : Date.now(),
+      name: busData.busName,
+      route: `${busData.from} - ${busData.to}`,
+      time: busData.departureTime,
+      seats: busData.numberOfSeats,
+      price: busData.ticketPrice,
+    };
+
+    if (editMode) {
+      dispatch(editBus(newBus));
+    } else {
+      dispatch(addBus(newBus));
+    }
+
+    // Reset form
+    setEditMode(false);
+    setSelectedBusId(null);
     setBusData({
       busName: "",
       from: "",
@@ -44,35 +73,8 @@ export default function BusesPage() {
       numberOfSeats: "",
       ticketPrice: "",
     });
-
     setShowForm(false);
-
-    router.replace("/buses");
   };
-
-  const busInfo = [
-    {
-      name: "Night Rider",
-      route: "Mumbai → Pune",
-      time: "07:00 PM",
-      seats: 17,
-      assignedDriverId: 3,
-    },
-    {
-      name: "Express 1",
-      route: "Pune → Mumbai",
-      time: "08:30 AM",
-      seats: 17,
-      assignedDriverId: 3,
-    },
-    {
-      name: "Express 2",
-      route: "Mumbai → Nashik",
-      time: "10:00 PM",
-      seats: 17,
-      assignedDriverId: 3,
-    },
-  ];
 
   const drivers = [
     { id: 1, name: "Rajesh Kumar" },
@@ -118,9 +120,9 @@ export default function BusesPage() {
         {/* Bus Cards Grid */}
         <div className="max-w-5xl mx-auto w-full">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {busInfo.map((bus, index) => (
+            {busInfo.map((bus) => (
               <div
-                key={index}
+                key={bus.id}
                 className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
               >
                 {/* Header */}
@@ -131,11 +133,25 @@ export default function BusesPage() {
                   <div className="flex items-center gap-2 text-[#004aad]">
                     <button
                       title="Edit Bus"
+                      onClick={() => {
+                        setShowForm(true);
+                        setEditMode(true);
+                        setSelectedBusId(bus.id);
+                        setBusData({
+                          busName: bus.name,
+                          from: bus.route.split(" - ")[0],
+                          to: bus.route.split(" - ")[1],
+                          departureTime: bus.time,
+                          numberOfSeats: bus.seats,
+                          ticketPrice: bus.price,
+                        });
+                      }}
                       className="bg-[#007bff1a] hover:bg-[#007bff33] py-2 pl-2 pr-1.5 rounded-lg transition duration-200"
                     >
                       <FaEdit className="text-[#004aad]" />
                     </button>
                     <button
+                      onClick={() => dispatch(deleteBus(bus.id))}
                       title="Delete Bus"
                       className="bg-[#007bff1a] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
                     >
@@ -332,7 +348,10 @@ export default function BusesPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditMode(false);
+                    setSelectedBusId(null);
                     setBusData({
                       busName: "",
                       from: "",
@@ -340,8 +359,8 @@ export default function BusesPage() {
                       departureTime: "",
                       numberOfSeats: "",
                       ticketPrice: "",
-                    })
-                  }
+                    });
+                  }}
                   className="bg-white text-gray-600 border border-gray-300 rounded-md px-4 py-2 text-xs font-base hover:bg-[#f5f7fa] transition duration-200"
                 >
                   Cancel
