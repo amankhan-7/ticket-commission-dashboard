@@ -10,7 +10,7 @@ import {
   FaPlus,
 } from "react-icons/fa";
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import {
   addBus,
@@ -20,7 +20,6 @@ import {
 
 export default function BusesPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -361,7 +360,7 @@ export default function BusesPage() {
                       ticketPrice: "",
                     });
                   }}
-                  className="bg-white text-gray-600 border border-gray-300 rounded-md px-4 py-2 text-xs font-base hover:bg-[#f5f7fa] transition duration-200"
+                  className="bg-white text-gray-600 border border-gray-300 rounded-md px-4 py-2 text-xs font-base hover:bg-[#f5f7fa] transition duration-200 cursor-pointer"
                 >
                   Cancel
                 </button>
