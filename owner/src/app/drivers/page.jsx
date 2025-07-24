@@ -59,7 +59,7 @@ export default function DriversPage() {
         </div>
 
         {/* Section Header */}
-        <div className="flex flex-row justify-between items-start max-w-5xl mx-auto w-full sm:items-center mb-2 gap-3">
+        <div className="flex flex-row justify-between items-start max-w-5xl mx-auto w-full sm:items-center mb-2 gap-3 ">
           <h2 className="text-[#004aad] text-[22px] font-semibold">
             Your Drivers
           </h2>
@@ -74,7 +74,7 @@ export default function DriversPage() {
         </div>
 
         {/* Drivers List */}
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 py-6 max-w-5xl mx-auto w-full">
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 py-6 max-w-5xl mx-auto w-full animate-fadeInUp">
           {drivers.map((driver, index) => (
             <div
               key={index}

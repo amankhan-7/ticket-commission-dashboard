@@ -117,7 +117,7 @@ export default function BusesPage() {
         </div>
 
         {/* Bus Cards Grid */}
-        <div className="max-w-5xl mx-auto w-full">
+        <div className="max-w-5xl mx-auto w-full animate-fadeInUp">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {busInfo.map((bus) => (
               <div
