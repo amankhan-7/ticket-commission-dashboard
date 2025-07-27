@@ -14,7 +14,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   addDriver,
   deleteDriver,
-} from "@/utils/redux/features/drivers/deiversSlice";
+} from "@/utils/redux/slices/driversSlice";
 
 export default function DriversPage() {
   const drivers = useSelector((state) => state.drivers);
@@ -120,7 +120,7 @@ export default function DriversPage() {
 
         {/* Add New Driver Form */}
         {showForm && (
-          <section className="bg-white rounded-[12px] p-6 mb-6 shadow max-w-5xl mx-auto w-full">
+          <section className="bg-white rounded-[12px] p-6 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
             <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
               Add New Driver
             </h2>

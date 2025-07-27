@@ -16,7 +16,7 @@ import {
   addBus,
   editBus,
   deleteBus,
-} from "@/utils/redux/features/buses/busesSlice";
+} from "@/utils/redux/slices/busesSlice";
 
 export default function BusesPage() {
   const searchParams = useSearchParams();
@@ -203,7 +203,7 @@ export default function BusesPage() {
 
         {/* FORM SECTION */}
         {showForm && (
-          <section className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-5xl mx-auto w-full">
+          <section className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
             <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
               Add New Bus
             </h2>
