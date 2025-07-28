@@ -14,7 +14,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   addDriver,
   deleteDriver,
-} from "@/utils/redux/features/drivers/deiversSlice";
+} from "@/utils/redux/slices/driversSlice";
 
 export default function DriversPage() {
   const drivers = useSelector((state) => state.drivers);
@@ -59,7 +59,7 @@ export default function DriversPage() {
         </div>
 
         {/* Section Header */}
-        <div className="flex flex-row justify-between items-start max-w-5xl mx-auto w-full sm:items-center mb-2 gap-3">
+        <div className="flex flex-row justify-between items-start max-w-5xl mx-auto w-full sm:items-center mb-2 gap-3 ">
           <h2 className="text-[#004aad] text-[22px] font-semibold">
             Your Drivers
           </h2>
@@ -74,7 +74,7 @@ export default function DriversPage() {
         </div>
 
         {/* Drivers List */}
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 py-6 max-w-5xl mx-auto w-full">
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 py-6 max-w-5xl mx-auto w-full animate-fadeInUp">
           {drivers.map((driver, index) => (
             <div
               key={index}
@@ -120,7 +120,7 @@ export default function DriversPage() {
 
         {/* Add New Driver Form */}
         {showForm && (
-          <section className="bg-white rounded-[12px] p-6 mb-6 shadow max-w-5xl mx-auto w-full">
+          <section className="bg-white rounded-[12px] p-6 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
             <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
               Add New Driver
             </h2>

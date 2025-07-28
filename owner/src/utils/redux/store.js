@@ -1,18 +1,16 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { busesApi } from './api/busesApi';
-import { driversApi } from './api/driversApi';
-import busReducer from './features/buses/busesSlice';
-import driverReducer from './features/drivers/deiversSlice';
+import { configureStore } from "@reduxjs/toolkit";
+import busReducer from "./slices/busesSlice";
+import driverReducer from "./slices/driversSlice";
+import authReducer from "./slices/authSlice";
+import { apiSlice } from "./api/apiSlice";
 
 export const store = configureStore({
   reducer: {
-    [busesApi.reducerPath]: busesApi.reducer,
-    [driversApi.reducerPath]: driversApi.reducer,
     buses: busReducer,
     drivers: driverReducer,
+    auth: authReducer,
+    [apiSlice.reducerPath]: apiSlice.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware()
-      .concat(busesApi.middleware)
-      .concat(driversApi.middleware),
+    getDefaultMiddleware().concat(apiSlice.middleware),
 });
