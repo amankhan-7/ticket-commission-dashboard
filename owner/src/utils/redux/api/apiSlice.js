@@ -5,7 +5,7 @@ import { safeLocalStorage } from "@/utils/localStorage";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: `${BASE_URL}/api/v1/owner`,
+  baseUrl: `${BASE_URL}/api/v1/bus-owner`,
   credentials: "include",
   prepareHeaders: (headers, { getState }) => {
     headers.set("Content-Type", "application/json");
