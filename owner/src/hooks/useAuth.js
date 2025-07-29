@@ -1,4 +1,4 @@
-import { useLogoutMutation } from "@/utils/redux/api/user";
+import { useLogoutMutation } from "@/utils/redux/api/userSlice";
 import {
   selectCurrentUser,
   selectIsAuthenticated,

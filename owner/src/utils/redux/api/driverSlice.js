@@ -2,7 +2,6 @@ import { apiSlice } from "./apiSlice";
 
 export const driverApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    // Driver management
     getDrivers: builder.query({
       query: () => ({
         url: "/drivers",
@@ -46,7 +45,7 @@ export const driverApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [
         { type: "Driver", id },
         { type: "Driver", id: "LIST" },
-        { type: "Route", id: "LIST" }, // Routes might show driver assignment
+        { type: "Route", id: "LIST" },
       ],
       transformResponse: (res) => res.data,
     }),
