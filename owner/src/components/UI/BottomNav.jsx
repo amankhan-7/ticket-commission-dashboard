@@ -6,7 +6,7 @@ import { FaHome, FaBus, FaUser, FaCog } from "react-icons/fa";
 import clsx from "clsx";
 
 const navItems = [
-  { label: "Home", icon: FaHome, href: "/home" },
+  { label: "Home", icon: FaHome, href: "/" },
   { label: "Buses", icon: FaBus, href: "/buses" },
   { label: "Drivers", icon: FaUser, href: "/drivers" },
   { label: "Settings", icon: FaCog, href: "/settings" },
