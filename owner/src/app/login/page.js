@@ -11,7 +11,7 @@ import {
   useInitiateLoginMutation,
   useRegisterMutation,
   useVerifyOtpMutation,
-} from "@/utils/redux/api/user";
+} from "@/utils/redux/api/userSlice";
 import { setCredentials } from "@/utils/redux/slices/authSlice";
 import { useSEO } from "@/hooks/useSEO";
 import { SEO_CONFIG } from "@/config/seo";

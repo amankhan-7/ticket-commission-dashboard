@@ -8,7 +8,7 @@ import { useGetTodayTripsQuery } from "@/utils/redux/api/tripsApiSlice";
 export default function HomePage() {
   const router = useRouter();
 
-    const { data, isLoading, isError } = useGetTodayTripsQuery();
+    const { data, isLoading, isError } = useGetTodaySeatsBookedQuery();
 
   const totalTrips = data?.totalTrips ?? 0;
   const totalSeatsBooked = data?.totalSeatsBooked ?? 0;
@@ -44,7 +44,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 max-w-5xl mx-auto animate-fadeInUp">
           <div className="bg-white px-4 pt-4 pb-3 rounded-lg shadow flex justify-between items-center">
             <div>
-              <div className="text-sm text-gray-600 mb-3"> {isLoading ? "..." : totalTrips}</div>
+              <div className="text-sm text-gray-600 mb-3"> {isLoading ? "Loading..." : totalTrips}</div>
               <div className="text-2xl font-semibold text-gray-800">{totalTrips}</div>
             </div>
             <div className="w-9 h-9 rounded-lg bg-[#004aad] text-white flex items-center justify-center">
@@ -57,7 +57,7 @@ export default function HomePage() {
               <div className="text-sm text-gray-600 mb-3">
                 Seats Booked Today
               </div>
-              <div className="text-2xl font-semibold text-gray-800">{isLoading ? "..." : totalSeatsBooked}</div>
+              <div className="text-2xl font-semibold text-gray-800">{isLoading ? "Loading..." : totalSeatsBooked}</div>
             </div>
             <div className="w-9 h-9 rounded-lg bg-green-600 text-white flex items-center justify-center">
               <FaTicketAlt />

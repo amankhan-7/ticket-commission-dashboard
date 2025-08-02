@@ -39,7 +39,7 @@ async function getEncryptionKey() {
   }
 
   throw new Error(
-    "No encryption key found. Set ENCRYPTION_KEY environment variable."
+    "No encryption key found. Set NEXT_PUBLIC_ENCRYPTION_KEY environment variable."
   );
 }
 
@@ -237,7 +237,7 @@ export async function decryptObject(encryptedData) {
     return JSON.parse(decryptedString);
   } catch (error) {
     console.error("Object decryption error:", error);
-    throw new Error("Failed to decrypt object");
+    return null;
   }
 }
 

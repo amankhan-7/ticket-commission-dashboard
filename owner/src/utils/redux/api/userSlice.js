@@ -2,6 +2,16 @@ import { apiSlice } from "./apiSlice";
 
 export const userApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+    // Health check endpoint
+    healthCheck: builder.query({
+      query: () => ({
+        url: `/health`,
+        method: "GET",
+      }),
+      transformResponse: (res) => res,
+    }),
+
+    // Authentication endpoints
     initiateLogin: builder.mutation({
       query: ({ phoneNumber }) => ({
         url: `/initiate-login`,
@@ -19,7 +29,7 @@ export const userApiSlice = apiSlice.injectEndpoints({
         body: { phoneNumber, otp, purpose },
       }),
       transformResponse: (res) => res.data,
-      invalidatesTags: (_res, _err, _args) => [{ type: "User", id: "CURRENT" }],
+      invalidatesTags: [{ type: "User", id: "CURRENT" }],
     }),
 
     register: builder.mutation({
@@ -32,6 +42,7 @@ export const userApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: [{ type: "User", id: "CURRENT" }],
     }),
 
+    // User profile management
     getUserProfile: builder.query({
       query: ({ userId }) => ({
         url: `/get-profile`,
@@ -42,6 +53,33 @@ export const userApiSlice = apiSlice.injectEndpoints({
       providesTags: [{ type: "User", id: "CURRENT" }],
     }),
 
+    updateUserProfile: builder.mutation({
+      query: ({ userId, firstName, lastName, email }) => ({
+        url: `/update-profile`,
+        method: "POST",
+        body: { userId, firstName, lastName, email },
+      }),
+      transformResponse: (res) => res.data,
+      invalidatesTags: [{ type: "User", id: "CURRENT" }],
+    }),
+
+    deleteAccount: builder.mutation({
+      query: ({ userId }) => ({
+        url: `/delete-account`,
+        method: "POST",
+        body: { userId },
+      }),
+      transformResponse: (res) => res.data,
+      invalidatesTags: [
+        { type: "User", id: "CURRENT" },
+        { type: "Route", id: "LIST" },
+        { type: "Driver", id: "LIST" },
+        "TodayTrips",
+        "RouteStats",
+      ],
+    }),
+
+    // Authentication utilities
     refreshToken: builder.mutation({
       query: () => ({
         url: `/refresh-token`,
@@ -56,7 +94,13 @@ export const userApiSlice = apiSlice.injectEndpoints({
         method: "POST",
       }),
       transformResponse: (res) => res.data,
-      invalidatesTags: [{ type: "User", id: "CURRENT" }],
+      invalidatesTags: [
+        { type: "User", id: "CURRENT" },
+        { type: "Route", id: "LIST" },
+        { type: "Driver", id: "LIST" },
+        "TodayTrips",
+        "RouteStats",
+      ],
     }),
 
     resetAccount: builder.mutation({
@@ -78,29 +122,11 @@ export const userApiSlice = apiSlice.injectEndpoints({
       transformResponse: (res) => res.data,
       invalidatesTags: [{ type: "User", id: "CURRENT" }],
     }),
-
-    updateUserProfile: builder.mutation({
-      query: ({ userId, firstName, lastName, email }) => ({
-        url: `/update-profile`,
-        method: "POST",
-        body: { userId, firstName, lastName, email },
-      }),
-      transformResponse: (res) => res.data,
-      invalidatesTags: [{ type: "User", id: "CURRENT" }],
-    }),
-    deleteAccount: builder.mutation({
-      query: ({ userId }) => ({
-        url: `/delete-account`,
-        method: "POST",
-        body: { userId },
-      }),
-      transformResponse: (res) => res.data,
-      invalidatesTags: [{ type: "User", id: "CURRENT" }],
-    }),
   }),
 });
 
 export const {
+  useHealthCheckQuery,
   useInitiateLoginMutation,
   useVerifyOtpMutation,
   useResetAccountMutation,
@@ -110,4 +136,5 @@ export const {
   useRefreshTokenMutation,
   useLogoutMutation,
   useRegisterMutation,
+  useDeleteAccountMutation,
 } = userApiSlice;
