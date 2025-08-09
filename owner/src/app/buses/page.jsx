@@ -8,15 +8,28 @@ import {
   FaClock,
   FaChair,
   FaPlus,
+  FaExchangeAlt,
+  FaRupeeSign,
 } from "react-icons/fa";
+
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "sonner";
 import {
-  addBus,
-  editBus,
-  deleteBus,
-} from "@/utils/redux/slices/busesSlice";
+  useUpdateBusMutation,
+  useAddBusMutation,
+  useDeleteBusMutation,
+  useGetAllBusesQuery,
+} from "@/utils/redux/api/busSlice";
+import {
+  useGetDriversQuery,
+  useAssignDriverMutation,
+} from "@/utils/redux/api/driverSlice";
+import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { busSchema } from "@/utils/validations/form-validation";
+import { useRouter } from "next/navigation";
 
 export default function BusesPage() {
   const searchParams = useSearchParams();
@@ -24,62 +37,117 @@ export default function BusesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedBusId, setSelectedBusId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const dispatch = useDispatch();
-  const busInfo = useSelector((state) => state.buses); //
+  const router = useRouter();
+
+  const [addBus, { isLoading: isAdding }] = useAddBusMutation();
+  const [updateBus, { isLoading: isUpdating }] = useUpdateBusMutation();
+  const [deleteBus, { isLoading: isDeleting }] = useDeleteBusMutation();
+  const { data, isLoading, refetch } = useGetAllBusesQuery();
+  const buses = data?.routes ?? [];
+
+  console.log(buses);
+  const { data: driverList = [], isLoading: driversLoading } =
+    useGetDriversQuery();
+  const [assignDriver, { isLoading: isAssigning }] = useAssignDriverMutation();
+
+  const handleSwapRoute = () => {
+    setBusData((prev) => {
+      return {
+        ...prev,
+        routeFrom: prev.routeTo,
+        routeTo: prev.routeFrom,
+      };
+    });
+  };
+  // const USERS_PER_PAGE = 6;
+  // const totalPages = Math.ceil(buses.length / USERS_PER_PAGE);
+  // const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+  // const paginatedBuses = buses.slice(startIndex, startIndex + USERS_PER_PAGE);
+
+  const user = useSelector(selectCurrentUser);
+  const initials =
+    user?.firstName && user?.lastName
+      ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
+      : "SB";
 
   useEffect(() => {
     if (searchParams.get("add") === "true") {
       setShowForm(true);
     }
-  }, [dispatch, searchParams, busInfo.length]);
+  }, [searchParams, buses?.length]);
 
   const [busData, setBusData] = useState({
+    busNumber: "",
     busName: "",
-    from: "",
-    to: "",
+    routeFrom: "",
+    routeTo: "",
+    date: "",
     departureTime: "",
-    numberOfSeats: "",
-    ticketPrice: "",
+    arrivalTime: "",
+    price: "",
+    totalSeats: "",
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const newBus = {
-      id: editMode ? selectedBusId : Date.now(),
-      name: busData.busName,
-      route: `${busData.from} - ${busData.to}`,
-      time: busData.departureTime,
-      seats: busData.numberOfSeats,
-      price: busData.ticketPrice,
+    const payload = {
+      ...busData,
+      price: Number(busData.price),
+      totalSeats: Number(busData.totalSeats),
     };
 
-    if (editMode) {
-      dispatch(editBus(newBus));
-    } else {
-      dispatch(addBus(newBus));
-    }
+    try {
+      if (editMode && selectedBusId) {
+        await updateBus({ routeId: selectedBusId, ...payload }).unwrap();
+        toast.success("Bus updated successfully");
+      } else {
+        await addBus(payload).unwrap();
+        toast.success("Bus route added successfully");
+        refetch();
+      }
 
-    // Reset form
-    setEditMode(false);
-    setSelectedBusId(null);
-    setBusData({
-      busName: "",
-      from: "",
-      to: "",
-      departureTime: "",
-      numberOfSeats: "",
-      ticketPrice: "",
-    });
-    setShowForm(false);
+      setBusData({
+        busName: "",
+        busNumber: "",
+        routeFrom: "",
+        routeTo: "",
+        departureTime: "",
+        arrivalTime: "",
+        date: "",
+        price: "",
+        totalSeats: "",
+      });
+
+      setEditMode(false);
+      setSelectedBusId(null);
+    } catch (error) {
+      console.error("Submit failed:", error);
+      toast.error("Something went wrong");
+    }
   };
 
-  const drivers = [
-    { id: 1, name: "Rajesh Kumar" },
-    { id: 2, name: "Sunil Patil" },
-    { id: 3, name: "Amit Sharma" },
-  ];
+  const handleAssignDriver = (selectedDriverId, busId) => {
+  if (selectedDriverId && busId) {
+    assignDriver({ id: selectedDriverId, busId });
+  }
+};
+
+
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this bus?")) return;
+    try {
+      await deleteBus(id).unwrap();
+      toast.success("Bus deleted");
+      refetch();
+    } catch (err) {
+      console.error("Delete failed", err);
+      toast.error("Delete failed");
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
@@ -91,12 +159,19 @@ export default function BusesPage() {
           <h1 className="text-xl font-semibold text-[#004aad] mb-4 md:mb-0">
             Buses
           </h1>
-          <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-3  cursor-pointer"
+            onClick={() => router.push("/account")}
+          >
             <div className="w-10 h-10 rounded-full bg-[#004aad] text-white flex items-center justify-center font-semibold">
-              AR
+              {initials}
             </div>
             <div>
-              <div className="font-medium text-gray-800">Ankush Raj</div>
+              <div className="font-medium text-gray-800">
+                {user?.firstName || user?.lastName
+                  ? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()
+                  : "Unknown Owner"}
+              </div>
               <div className="text-sm text-gray-500">Bus Owner</div>
             </div>
           </div>
@@ -119,15 +194,18 @@ export default function BusesPage() {
         {/* Bus Cards Grid */}
         <div className="max-w-5xl mx-auto w-full animate-fadeInUp">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {busInfo.map((bus) => (
+            {buses.map((bus) => (
               <div
-                key={bus.id}
+                key={bus._id}
                 className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
               >
                 {/* Header */}
                 <div className="flex justify-between items-center px-4 py-3.5 border-b border-gray-200">
                   <h2 className="text-base font-semibold text-gray-800">
-                    {bus.name}
+                    {bus.busName}
+                    <p className="font-light text-xs text-gray-500">
+                      {bus.busNumber}
+                    </p>
                   </h2>
                   <div className="flex items-center gap-2 text-[#004aad]">
                     <button
@@ -135,14 +213,17 @@ export default function BusesPage() {
                       onClick={() => {
                         setShowForm(true);
                         setEditMode(true);
-                        setSelectedBusId(bus.id);
+                        setSelectedBusId(bus._id);
                         setBusData({
-                          busName: bus.name,
-                          from: bus.route.split(" - ")[0],
-                          to: bus.route.split(" - ")[1],
-                          departureTime: bus.time,
-                          numberOfSeats: bus.seats,
-                          ticketPrice: bus.price,
+                          busNumber: bus.busNumber || "",
+                          busName: bus.busName || "",
+                          routeFrom: bus.routeFrom || "",
+                          routeTo: bus.routeTo || "",
+                          date: bus.date || "",
+                          departureTime: bus.departureTime || "",
+                          arrivalTime: bus.arrivalTime || "",
+                          totalSeats: bus.totalSeats?.toString() || "",
+                          price: bus.price?.toString() || "",
                         });
                       }}
                       className="bg-[#007bff1a] hover:bg-[#007bff33] py-2 pl-2 pr-1.5 rounded-lg transition duration-200"
@@ -150,7 +231,7 @@ export default function BusesPage() {
                       <FaEdit className="text-[#004aad]" />
                     </button>
                     <button
-                      onClick={() => dispatch(deleteBus(bus.id))}
+                      onClick={() => handleDelete(bus._id)}
                       title="Delete Bus"
                       className="bg-[#007bff1a] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
                     >
@@ -160,18 +241,26 @@ export default function BusesPage() {
                 </div>
 
                 {/* Bus Details */}
-                <div className="flex flex-wrap justify-between gap-2 px-4 py-4 border-b border-gray-200 text-sm text-gray-700">
+                <div className="flex flex-col justify-between gap-2 px-4 py-4 border-b border-gray-200 text-sm text-gray-700">
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <FaRoute className="text-[#004aad]" />
-                    <span>{bus.route}</span>
+                    <span>
+                      {bus.routeFrom} → {bus.routeTo}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <FaClock className="text-[#004aad]" />
-                    <span>{bus.time}</span>
+                    <span>
+                      {bus.departureTime} - {bus.arrivalTime}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <FaChair className="text-[#004aad]" />
-                    <span>{bus.seats}</span>
+                    <span>{bus.totalSeats}</span>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <FaRupeeSign className="text-[#004aad]" />
+                    <span>{bus.price}</span>
                   </div>
                 </div>
 
@@ -181,17 +270,22 @@ export default function BusesPage() {
                   <select
                     className="border border-gray-300 font-semibold rounded px-2 py-1 w-full md:w-56 text-sm focus:outline-none focus:ring focus:ring-[#0056b3]"
                     defaultValue=""
+                    onChange={(e) => handleAssignDriver(e.target.value, bus._id)}
+                    disabled={isAssigning}
                   >
                     <option value="" className="font-semibold" disabled>
                       Assign Driver
                     </option>
-                    {drivers.map((driver) => (
+                    {driverList.map((driver) => (
                       <option
-                        key={driver.id}
+                        disabled={
+                          driver.assignedTo && driver.assignedTo !== bus._id
+                        }
+                        key={driver._id}
+                        value={driver._id}
                         className="font-semibold"
-                        value={driver.id}
                       >
-                        {driver.name}
+                        {driver.driverName}
                       </option>
                     ))}
                   </select>
@@ -199,6 +293,22 @@ export default function BusesPage() {
               </div>
             ))}
           </div>
+          {/* Pagination
+          <div className="flex justify-center items-center gap-2 py-4 flex-wrap">
+            {Array.from({ length: totalPages }, (_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentPage(index + 1)}
+                className={`w-8 h-8 flex items-center justify-center rounded-full border text-sm font-semibold ${
+                  currentPage === index + 1
+                    ? "bg-[#004aad] text-white"
+                    : "bg-white border-gray-300 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div> */}
         </div>
 
         {/* FORM SECTION */}
@@ -209,6 +319,27 @@ export default function BusesPage() {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Bus Number */}
+              <div>
+                <label
+                  htmlFor="busNumber"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Bus Number
+                </label>
+                <input
+                  id="busNumber"
+                  name="busNumber"
+                  value={busData.busNumber}
+                  onChange={(e) =>
+                    setBusData({ ...busData, busNumber: e.target.value })
+                  }
+                  placeholder="e.g., MH01 AB 1234"
+                  type="text"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] text-gray-700"
+                />
+              </div>
+
               {/* Bus Name */}
               <div>
                 <label
@@ -226,54 +357,110 @@ export default function BusesPage() {
                   }
                   placeholder="Enter bus name"
                   type="text"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
                 />
               </div>
 
-              {/* From and To */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* From and To with Swap Button */}
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-end">
+                {/* From */}
                 <div>
                   <label
-                    htmlFor="from"
+                    htmlFor="routeFrom"
                     className="block mb-2 text-sm font-medium text-gray-700"
                   >
                     From
                   </label>
                   <input
-                    id="from"
-                    name="from"
-                    value={busData.from}
+                    id="routeFrom"
+                    name="routeFrom"
+                    value={busData.routeFrom}
                     onChange={(e) =>
-                      setBusData({ ...busData, from: e.target.value })
+                      setBusData({ ...busData, routeFrom: e.target.value })
                     }
                     placeholder="Departure City"
                     type="text"
-                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                    className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
                   />
                 </div>
 
+                {/* Swap Icon Button */}
+                <div className="flex justify-center items-center h-full pt-6">
+                  <button
+                    type="button"
+                    onClick={handleSwapRoute}
+                    className="text-[#004aad] hover:text-[#003580] transition text-xl p-2 rounded-full hover:bg-gray-100"
+                    title="Swap From & To"
+                  >
+                    <FaExchangeAlt className="pointer-events-none" />
+                  </button>
+                </div>
+
+                {/* To */}
                 <div>
                   <label
-                    htmlFor="to"
+                    htmlFor="routeTo"
                     className="block mb-2 text-sm font-medium text-gray-700"
                   >
                     To
                   </label>
                   <input
-                    id="to"
-                    name="to"
-                    value={busData.to}
+                    id="routeTo"
+                    name="routeTo"
+                    value={busData.routeTo}
                     onChange={(e) =>
-                      setBusData({ ...busData, to: e.target.value })
+                      setBusData({ ...busData, routeTo: e.target.value })
                     }
                     placeholder="Arrival City"
                     type="text"
-                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                    className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
                   />
                 </div>
               </div>
 
-              {/* Departure Time & Number of Seats */}
+              {/* Travel Date and Total Seats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="date"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Travel Date
+                  </label>
+                  <input
+                    id="date"
+                    name="date"
+                    type="date"
+                    value={busData.date}
+                    onChange={(e) =>
+                      setBusData({ ...busData, date: e.target.value })
+                    }
+                    className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="totalSeats"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Total Seats
+                  </label>
+                  <input
+                    id="totalSeats"
+                    name="totalSeats"
+                    type="number"
+                    min="1"
+                    value={busData.totalSeats}
+                    onChange={(e) =>
+                      setBusData({ ...busData, totalSeats: e.target.value })
+                    }
+                    className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
+              </div>
+
+              {/* Departure Time & Arrival Time */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label
@@ -285,32 +472,31 @@ export default function BusesPage() {
                   <input
                     id="departureTime"
                     name="departureTime"
+                    type="time"
                     value={busData.departureTime}
                     onChange={(e) =>
                       setBusData({ ...busData, departureTime: e.target.value })
                     }
-                    type="time"
-                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-medium focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                    className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
                   />
                 </div>
 
                 <div>
                   <label
-                    htmlFor="numberOfSeats"
+                    htmlFor="arrivalTime"
                     className="block mb-2 text-sm font-medium text-gray-700"
                   >
-                    Number of Seats
+                    Arrival Time
                   </label>
                   <input
-                    id="numberOfSeats"
-                    name="numberOfSeats"
-                    value={busData.numberOfSeats}
+                    id="arrivalTime"
+                    name="arrivalTime"
+                    type="time"
+                    value={busData.arrivalTime}
                     onChange={(e) =>
-                      setBusData({ ...busData, numberOfSeats: e.target.value })
+                      setBusData({ ...busData, arrivalTime: e.target.value })
                     }
-                    type="number"
-                    min="1"
-                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-medium focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                    className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
                   />
                 </div>
               </div>
@@ -318,22 +504,22 @@ export default function BusesPage() {
               {/* Ticket Price */}
               <div>
                 <label
-                  htmlFor="ticketPrice"
+                  htmlFor="price"
                   className="block mb-2 text-sm font-medium text-gray-700"
                 >
                   Ticket Price (₹)
                 </label>
                 <input
-                  id="ticketPrice"
-                  name="ticketPrice"
-                  value={busData.ticketPrice}
-                  onChange={(e) =>
-                    setBusData({ ...busData, ticketPrice: e.target.value })
-                  }
+                  id="price"
+                  name="price"
                   type="number"
-                  placeholder="Enter Price"
                   min="0"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  value={busData.price}
+                  onChange={(e) =>
+                    setBusData({ ...busData, price: e.target.value })
+                  }
+                  placeholder="Enter price"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
                 />
               </div>
 
@@ -341,9 +527,15 @@ export default function BusesPage() {
               <div className="flex gap-3 flex-wrap">
                 <button
                   type="submit"
-                  className="bg-[#004aad] text-white px-6 py-2 rounded-sm text-xs font-base hover:hover:bg-[#0056b3] cursor-pointer transition duration-200"
+                  className="bg-[#004aad] text-white px-6 py-2 rounded-sm text-xs font-base hover:bg-[#0056b3] cursor-pointer transition duration-200"
                 >
-                  Save Bus
+                  {editMode
+                    ? isUpdating
+                      ? "Updating..."
+                      : "Update"
+                    : isAdding
+                    ? "Saving..."
+                    : "Save"}
                 </button>
                 <button
                   type="button"
@@ -352,12 +544,15 @@ export default function BusesPage() {
                     setEditMode(false);
                     setSelectedBusId(null);
                     setBusData({
+                      busNumber: "",
                       busName: "",
-                      from: "",
-                      to: "",
+                      routeFrom: "",
+                      routeTo: "",
+                      date: "",
                       departureTime: "",
-                      numberOfSeats: "",
-                      ticketPrice: "",
+                      arrivalTime: "",
+                      totalSeats: "",
+                      price: "",
                     });
                   }}
                   className="bg-white text-gray-600 border border-gray-300 rounded-md px-4 py-2 text-xs font-base hover:bg-[#f5f7fa] transition duration-200 cursor-pointer"

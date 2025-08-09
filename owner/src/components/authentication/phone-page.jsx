@@ -93,7 +93,7 @@ export default function PhonePage({ onSubmit }) {
             />
             <Button
               type="submit"
-              className="w-full mt-4 p-3.5  h-12 tracking-[0.5px] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300"
+              className="w-full mt-4 p-3.5  h-12 tracking-[0.5px] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 cursor-pointer"
             >
               Get OTP
             </Button>

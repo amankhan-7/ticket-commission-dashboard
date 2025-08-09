@@ -15,12 +15,15 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { signInPhoneSchema } from "@/utils/validations/form-validation";
+import {
+  registerSchema,
+} from "@/utils/validations/form-validation";
 
 export default function PhonePage({ onSubmit }) {
   const form = useForm({
-    resolver: zodResolver(signInPhoneSchema),
     defaultValues: {
+      firstName: "",
+      lastName: "",
       phone: "",
       tnc: true,
     },
@@ -37,17 +40,57 @@ export default function PhonePage({ onSubmit }) {
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <FormField
               control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem className="mb-5 gap-0">
+                  <FormLabel className="font-medium text-[1rem] text-[var(--text-color)] mb-2.5">
+                    Enter your first name
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Ajay"
+                      {...field}
+                      className="md:text-[1.2rem] h-14 w-full border focus-visible:border-primary focus:shadow-[0_0_0_3px_rgba(0,74,173,0.15)] p-3.5"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem className="mb-5 gap-0">
+                  <FormLabel className="font-medium text-[1rem] text-[var(--text-color)] mb-2.5">
+                    Enter your last name
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Raj"
+                      {...field}
+                      className="md:text-[1.2rem] h-14 w-full border focus-visible:border-primary focus:shadow-[0_0_0_3px_rgba(0,74,173,0.15)] p-3.5"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="phone"
               render={({ field }) => (
                 <FormItem className="mb-5 gap-0">
                   <FormLabel className="font-medium text-[1rem] text-[var(--text-color)] mb-2.5">
                     Enter your phone number
-                  </FormLabel>{" "}
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="10-digit mobile number"
                       {...field}
-                      className="md:text-[1.2rem] h-14 w-full border focus-visible:border-primary focus:shadow-[0_0_0_3px_rgba(0,74,173,0.15)] p-3.5 "
+                      className="md:text-[1.2rem] h-14 w-full border focus-visible:border-primary focus:shadow-[0_0_0_3px_rgba(0,74,173,0.15)] p-3.5"
                     />
                   </FormControl>
                   <FormDescription className="mt-2">
@@ -57,6 +100,7 @@ export default function PhonePage({ onSubmit }) {
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="tnc"
@@ -78,8 +122,8 @@ export default function PhonePage({ onSubmit }) {
                         className="text-primary hover:underline inline-block p-0 mt-1"
                       >
                         Terms & Conditions
-                      </Link>
-                      {" "}and{" "}
+                      </Link>{" "}
+                      and{" "}
                       <Link
                         href="/privacy"
                         className="text-primary hover:underline inline-block p-0 mt-1"
@@ -93,7 +137,7 @@ export default function PhonePage({ onSubmit }) {
             />
             <Button
               type="submit"
-              className="w-full mt-4 p-3.5  h-12 tracking-[0.5px] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300"
+              className="w-full mt-4 p-3.5  h-12 tracking-[0.5px] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 cursor-pointer"
             >
               Get OTP
             </Button>

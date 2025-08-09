@@ -102,3 +102,47 @@ export const notifyFormSchema = userSchema
         message: "Please enter a valid email address",
       }),
   });
+
+
+ export const busSchema = z.object({
+  busNumber: z
+    .string()
+    .regex(/^[A-Z]{2}\d{2}\s[A-Z]{2}\s\d{4}$/, "Invalid bus number format (e.g., MH01 AB 1234)")
+    .nonempty("Bus number is required"),
+
+  busName: z
+    .string()
+    .min(2, "Bus name must be at least 2 characters")
+    .nonempty("Bus name is required"),
+
+  routeFrom: z
+    .string()
+    .min(2, "Route from must be at least 2 characters")
+    .nonempty("Route from is required"),
+
+  routeTo: z
+    .string()
+    .min(2, "Route to must be at least 2 characters")
+    .nonempty("Route to is required"),
+
+  date: z
+    .string()
+    .nonempty("Date is required")
+    .refine((val) => !isNaN(Date.parse(val)), "Invalid date"),
+
+  departureTime: z
+    .string()
+    .nonempty("Departure time is required"),
+
+  arrivalTime: z
+    .string()
+    .nonempty("Arrival time is required"),
+
+  price: z
+    .number({ invalid_type_error: "Price must be a number" })
+    .min(1, "Price must be greater than 0"),
+
+  totalSeats: z
+    .number({ invalid_type_error: "Total seats must be a number" })
+    .min(1, "Total seats must be at least 1")
+}); 
