@@ -30,6 +30,8 @@ import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { busSchema } from "@/utils/validations/form-validation";
 import { useRouter } from "next/navigation";
+import WeeklySeatsChart from "@/components/chart/WeeklySeatsChart";
+import { PageSkeleton } from "@/components/ui/skeletons";
 
 export default function BusesPage() {
   const searchParams = useSearchParams();
@@ -38,6 +40,7 @@ export default function BusesPage() {
   const [editMode, setEditMode] = useState(false);
   const [selectedBusId, setSelectedBusId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedDrivers, setSelectedDrivers] = useState({});
 
   const dispatch = useDispatch();
   const router = useRouter();
@@ -47,8 +50,12 @@ export default function BusesPage() {
   const [deleteBus, { isLoading: isDeleting }] = useDeleteBusMutation();
   const { data, isLoading, refetch } = useGetAllBusesQuery();
   const buses = data?.routes ?? [];
+  const chartData = buses.map((bus) => ({
+    date: bus.date,
+    totalSeats: bus.totalSeats ?? 20,
+    seatsBooked: bus.seatsBooked ?? 5,
+  }));
 
-  console.log(buses);
   const { data: driverList = [], isLoading: driversLoading } =
     useGetDriversQuery();
   const [assignDriver, { isLoading: isAssigning }] = useAssignDriverMutation();
@@ -130,12 +137,24 @@ export default function BusesPage() {
     }
   };
 
-  const handleAssignDriver = (selectedDriverId, busId) => {
-  if (selectedDriverId && busId) {
-    assignDriver({ id: selectedDriverId, busId });
-  }
-};
+  const handleAssignDriver = async (driverId, busId) => {
+    if (driverId && busId) {
+      try {
+        setSelectedDrivers((prev) => ({
+          ...prev,
+          [busId]: driverId,
+        }));
 
+        await assignDriver({ id: driverId, busId }).unwrap();
+      } catch (error) {
+        console.error("Failed to assign driver", error);
+        setSelectedDrivers((prev) => ({
+          ...prev,
+          [busId]: "",
+        }));
+      }
+    }
+  };
 
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this bus?")) return;
@@ -148,6 +167,7 @@ export default function BusesPage() {
       toast.error("Delete failed");
     }
   };
+  if (isLoading) return <PageSkeleton />;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
@@ -269,8 +289,10 @@ export default function BusesPage() {
                   <label className="font-medium">Driver:</label>
                   <select
                     className="border border-gray-300 font-semibold rounded px-2 py-1 w-full md:w-56 text-sm focus:outline-none focus:ring focus:ring-[#0056b3]"
-                    defaultValue=""
-                    onChange={(e) => handleAssignDriver(e.target.value, bus._id)}
+                    value={selectedDrivers[bus._id] || ""}
+                    onChange={(e) =>
+                      handleAssignDriver(e.target.value, bus._id)
+                    }
                     disabled={isAssigning}
                   >
                     <option value="" className="font-semibold" disabled>
@@ -563,6 +585,8 @@ export default function BusesPage() {
             </form>
           </section>
         )}
+
+        <WeeklySeatsChart buses={chartData} />
       </main>
     </div>
   );
