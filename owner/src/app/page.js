@@ -7,11 +7,16 @@ import { useGetTodaySeatsBookedQuery } from "@/utils/redux/api/busSlice";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
 import Image from "next/image";
+import { useEffect } from "react";
 
 export default function HomePage() {
   const router = useRouter();
 
-  const { data, isLoading: busLoading } = useGetTodaySeatsBookedQuery();
+  const {
+    data,
+    isLoading: busLoading,
+    refetch,
+  } = useGetTodaySeatsBookedQuery();
 
   const user = useSelector(selectCurrentUser);
   const profilePic = useSelector((state) => state.profile.profilePic);
@@ -22,6 +27,12 @@ export default function HomePage() {
 
   const totalTrips = data?.totalTrips ?? 0;
   const totalSeatsBooked = data?.totalSeatsBooked ?? 0;
+
+  useEffect(() => {
+    if (user?.token) {
+      refetch(); // ensure it runs after auth is ready
+    }
+  }, [user?.token, refetch]);
 
   const handleAddBus = () => {
     router.push("/buses?add=true");

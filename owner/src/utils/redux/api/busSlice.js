@@ -232,10 +232,6 @@ export const {
   useAddRouteStopMutation,
   useUpdateRouteStopMutation,
   useDeleteRouteStopMutation,
-  useGetDriversQuery,
-  useAddDriversMutation,
-  useDeleteDriversMutation,
-  useAssignDriverMutation,
 } = busSlice;
 
 export default busSlice;

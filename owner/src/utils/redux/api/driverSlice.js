@@ -14,14 +14,18 @@ export const driverApiSlice = apiSlice.injectEndpoints({
               { type: "Driver", id: "LIST" },
             ]
           : [{ type: "Driver", id: "LIST" }],
-      transformResponse: (res) => res.data,
+      transformResponse: (res) =>
+        (res.data || []).map((driver) => ({
+          ...driver,
+          status: driver.assignedTo ? "Active" : "Inactive",
+        })),
     }),
 
     addDriver: builder.mutation({
       query: ({ ownerId, name, phoneNumber, drivingLicense, joinedAt }) => ({
         url: `/drivers`,
         method: "POST",
-        body: { ownerId, name, phoneNumber, drivingLicense, joinedAt },
+        body: { name, phoneNumber, drivingLicense, joinedAt },
       }),
       invalidatesTags: [{ type: "Driver", id: "LIST" }],
       transformResponse: (res) => res.data,

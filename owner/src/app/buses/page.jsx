@@ -10,6 +10,7 @@ import {
   FaPlus,
   FaExchangeAlt,
   FaRupeeSign,
+  FaTicketAlt,
 } from "react-icons/fa";
 
 import { useState, useEffect } from "react";
@@ -31,7 +32,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { busSchema } from "@/utils/validations/form-validation";
 import { useRouter } from "next/navigation";
 import WeeklySeatsChart from "@/components/chart/WeeklySeatsChart";
-import { PageSkeleton } from "@/components/ui/skeletons";
+import { safeLocalStorage } from "@/utils/localStorage";
 
 export default function BusesPage() {
   const searchParams = useSearchParams();
@@ -40,7 +41,7 @@ export default function BusesPage() {
   const [editMode, setEditMode] = useState(false);
   const [selectedBusId, setSelectedBusId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedDrivers, setSelectedDrivers] = useState({});
+  const [selectedDrivers, setSelectedDrivers] = useState(null);
 
   const dispatch = useDispatch();
   const router = useRouter();
@@ -49,11 +50,14 @@ export default function BusesPage() {
   const [updateBus, { isLoading: isUpdating }] = useUpdateBusMutation();
   const [deleteBus, { isLoading: isDeleting }] = useDeleteBusMutation();
   const { data, isLoading, refetch } = useGetAllBusesQuery();
-  const buses = data?.routes ?? [];
+  const fallbackBuses = [
+    { _id: 1, date: "2025-08-09", totalSeats: 40, seatsBooked: 24 },
+  ];
+  const buses = data?.routes ?? fallbackBuses;
   const chartData = buses.map((bus) => ({
     date: bus.date,
     totalSeats: bus.totalSeats ?? 20,
-    seatsBooked: bus.seatsBooked ?? 5,
+    seatsBooked: bus.seatsBooked ?? 18,
   }));
 
   const { data: driverList = [], isLoading: driversLoading } =
@@ -69,10 +73,10 @@ export default function BusesPage() {
       };
     });
   };
-  // const USERS_PER_PAGE = 6;
-  // const totalPages = Math.ceil(buses.length / USERS_PER_PAGE);
-  // const startIndex = (currentPage - 1) * USERS_PER_PAGE;
-  // const paginatedBuses = buses.slice(startIndex, startIndex + USERS_PER_PAGE);
+  const USERS_PER_PAGE = 6;
+  const totalPages = Math.ceil(buses.length / USERS_PER_PAGE);
+  const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+  const paginatedBuses = buses.slice(startIndex, startIndex + USERS_PER_PAGE);
 
   const user = useSelector(selectCurrentUser);
   const initials =
@@ -80,6 +84,26 @@ export default function BusesPage() {
       ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
       : "SB";
 
+  // Load on mount - same as you have
+  useEffect(() => {
+    async function loadSelectedDrivers() {
+      const savedDrivers = await safeLocalStorage.getItem(
+        "selectedDrivers",
+        {}
+      );
+      setSelectedDrivers(savedDrivers);
+    }
+    loadSelectedDrivers();
+  }, []);
+
+  // Save only when selectedDrivers changes
+  useEffect(() => {
+    if (selectedDrivers !== null) {
+      safeLocalStorage.setItem("selectedDrivers", selectedDrivers);
+    }
+  }, [selectedDrivers]);
+
+  // handle showing form based on search param
   useEffect(() => {
     if (searchParams.get("add") === "true") {
       setShowForm(true);
@@ -131,6 +155,7 @@ export default function BusesPage() {
 
       setEditMode(false);
       setSelectedBusId(null);
+      setShowForm(false);
     } catch (error) {
       console.error("Submit failed:", error);
       toast.error("Something went wrong");
@@ -144,7 +169,6 @@ export default function BusesPage() {
           ...prev,
           [busId]: driverId,
         }));
-
         await assignDriver({ id: driverId, busId }).unwrap();
       } catch (error) {
         console.error("Failed to assign driver", error);
@@ -167,7 +191,6 @@ export default function BusesPage() {
       toast.error("Delete failed");
     }
   };
-  if (isLoading) return <PageSkeleton />;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
@@ -214,108 +237,123 @@ export default function BusesPage() {
         {/* Bus Cards Grid */}
         <div className="max-w-5xl mx-auto w-full animate-fadeInUp">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {buses.map((bus) => (
-              <div
-                key={bus._id}
-                className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
-              >
-                {/* Header */}
-                <div className="flex justify-between items-center px-4 py-3.5 border-b border-gray-200">
-                  <h2 className="text-base font-semibold text-gray-800">
-                    {bus.busName}
-                    <p className="font-light text-xs text-gray-500">
-                      {bus.busNumber}
-                    </p>
-                  </h2>
-                  <div className="flex items-center gap-2 text-[#004aad]">
-                    <button
-                      title="Edit Bus"
-                      onClick={() => {
-                        setShowForm(true);
-                        setEditMode(true);
-                        setSelectedBusId(bus._id);
-                        setBusData({
-                          busNumber: bus.busNumber || "",
-                          busName: bus.busName || "",
-                          routeFrom: bus.routeFrom || "",
-                          routeTo: bus.routeTo || "",
-                          date: bus.date || "",
-                          departureTime: bus.departureTime || "",
-                          arrivalTime: bus.arrivalTime || "",
-                          totalSeats: bus.totalSeats?.toString() || "",
-                          price: bus.price?.toString() || "",
-                        });
-                      }}
-                      className="bg-[#007bff1a] hover:bg-[#007bff33] py-2 pl-2 pr-1.5 rounded-lg transition duration-200"
-                    >
-                      <FaEdit className="text-[#004aad]" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(bus._id)}
-                      title="Delete Bus"
-                      className="bg-[#007bff1a] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
-                    >
-                      <FaTrash className="text-[#004aad]" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bus Details */}
-                <div className="flex flex-col justify-between gap-2 px-4 py-4 border-b border-gray-200 text-sm text-gray-700">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <FaRoute className="text-[#004aad]" />
-                    <span>
-                      {bus.routeFrom} → {bus.routeTo}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <FaClock className="text-[#004aad]" />
-                    <span>
-                      {bus.departureTime} - {bus.arrivalTime}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <FaChair className="text-[#004aad]" />
-                    <span>{bus.totalSeats}</span>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <FaRupeeSign className="text-[#004aad]" />
-                    <span>{bus.price}</span>
-                  </div>
-                </div>
-
-                {/* Driver Dropdown */}
-                <div className="flex items-center justify-between px-4 py-3 bg-[#f8f9fa] text-sm text-gray-700">
-                  <label className="font-medium">Driver:</label>
-                  <select
-                    className="border border-gray-300 font-semibold rounded px-2 py-1 w-full md:w-56 text-sm focus:outline-none focus:ring focus:ring-[#0056b3]"
-                    value={selectedDrivers[bus._id] || ""}
-                    onChange={(e) =>
-                      handleAssignDriver(e.target.value, bus._id)
-                    }
-                    disabled={isAssigning}
+            {isLoading
+              ? Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="bg-white shadow rounded-sm animate-pulse p-4"
                   >
-                    <option value="" className="font-semibold" disabled>
-                      Assign Driver
-                    </option>
-                    {driverList.map((driver) => (
-                      <option
-                        disabled={
-                          driver.assignedTo && driver.assignedTo !== bus._id
+                    <div className="h-4 bg-gray-300 rounded w-1/2 mb-3"></div>
+                    <div className="h-3 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-2/4"></div>
+                  </div>
+                ))
+              : buses.map((bus) => (
+                  <div
+                    key={bus._id}
+                    className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
+                  >
+                    {/* Header */}
+                    <div className="flex justify-between items-center px-4 py-3.5 border-b border-gray-200">
+                      <h2 className="text-base font-semibold text-gray-800">
+                        {bus.busName}
+                        <p className="font-light text-xs text-gray-500">
+                          {bus.busNumber}
+                        </p>
+                      </h2>
+                      <div className="flex items-center gap-2 text-[#004aad]">
+                        <button
+                          title="Edit Bus"
+                          onClick={() => {
+                            setShowForm(true);
+                            setEditMode(true);
+                            setSelectedBusId(bus._id);
+                            setBusData({
+                              busNumber: bus.busNumber || "",
+                              busName: bus.busName || "",
+                              routeFrom: bus.routeFrom || "",
+                              routeTo: bus.routeTo || "",
+                              date: bus.date || "",
+                              departureTime: bus.departureTime || "",
+                              arrivalTime: bus.arrivalTime || "",
+                              totalSeats: bus.totalSeats?.toString() || "",
+                              price: bus.price?.toString() || "",
+                            });
+                          }}
+                          className="bg-[#007bff1a] hover:bg-[#007bff33] py-2 pl-2 pr-1.5 rounded-lg transition duration-200"
+                        >
+                          <FaEdit className="text-[#004aad]" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(bus._id)}
+                          title="Delete Bus"
+                          className="bg-[#007bff1a] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
+                        >
+                          <FaTrash className="text-[#004aad]" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Bus Details */}
+                    <div className="flex flex-col justify-between gap-2 px-4 py-4 border-b border-gray-200 text-sm text-gray-700">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaRoute className="text-[#004aad]" />
+                        <span>
+                          {bus.routeFrom} → {bus.routeTo}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaClock className="text-[#004aad]" />
+                        <span>
+                          {bus.departureTime} - {bus.arrivalTime}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaChair className="text-[#004aad]" />
+                        <span>{bus.totalSeats}</span>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaTicketAlt className="text-[#004aad]" />
+                        <span>{bus.seatsBooked}</span>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaRupeeSign className="text-[#004aad]" />
+                        <span>{bus.price}</span>
+                      </div>
+                    </div>
+
+                    {/* Driver Dropdown */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#f8f9fa] text-sm text-gray-700">
+                      <label className="font-medium">Driver:</label>
+                      <select
+                        className="border border-gray-300 font-semibold rounded px-2 py-1 w-full md:w-56 text-sm focus:outline-none focus:ring focus:ring-[#0056b3]"
+                        value={selectedDrivers[bus._id] || ""}
+                        onChange={(e) =>
+                          handleAssignDriver(e.target.value, bus._id)
                         }
-                        key={driver._id}
-                        value={driver._id}
-                        className="font-semibold"
+                        disabled={isAssigning}
                       >
-                        {driver.driverName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            ))}
+                        <option value="" className="font-semibold" disabled>
+                          Assign Driver
+                        </option>
+                        {driverList.map((driver) => (
+                          <option
+                            disabled={
+                              driver.assignedTo && driver.assignedTo !== bus._id
+                            }
+                            key={driver._id}
+                            value={driver._id}
+                            className="font-semibold"
+                          >
+                            {driver.driverName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
           </div>
-          {/* Pagination
+          {/* Pagination */}
           <div className="flex justify-center items-center gap-2 py-4 flex-wrap">
             {Array.from({ length: totalPages }, (_, index) => (
               <button
@@ -330,7 +368,7 @@ export default function BusesPage() {
                 {index + 1}
               </button>
             ))}
-          </div> */}
+          </div>
         </div>
 
         {/* FORM SECTION */}

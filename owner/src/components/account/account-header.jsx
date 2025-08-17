@@ -22,13 +22,15 @@ const AccountHeader = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      dispatch(setProfilePic(url));
-    }
-  };
+const handleFileChange = (e) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    const url = URL.createObjectURL(file);
+    setImageUrl(url); 
+    dispatch(setProfilePic(url));
+  }
+};
+
 
 
   return (
