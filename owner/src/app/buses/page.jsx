@@ -120,15 +120,37 @@ export default function BusesPage() {
     arrivalTime: "",
     price: "",
     totalSeats: "",
+    routeStops: [],
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (
+      !busData.busNumber ||
+      !busData.routeFrom ||
+      !busData.routeTo ||
+      !busData.price ||
+      !busData.busName ||
+      !busData.date ||
+      !busData.arrivalTime ||
+      !busData.departureTime
+    ) {
+      toast.error("Please fill all required fields");
+      return;
+    }
 
     const payload = {
       ...busData,
       price: Number(busData.price),
       totalSeats: Number(busData.totalSeats),
+      routeStops: busData.routeStops.map((stop, index) => {
+        const stopData = { stopOrder: (index + 1).toString() };
+        if (stop.stopName) stopData.stopName = stop.stopName;
+        if (stop.arrivalTime) stopData.arrivalTime = stop.arrivalTime;
+        if (stop.departureTime) stopData.departureTime = stop.departureTime;
+        if (stop.distanceKm) stopData.distanceKm = Number(stop.distanceKm);
+        return stopData;
+      }),
     };
 
     try {
@@ -142,15 +164,16 @@ export default function BusesPage() {
       }
 
       setBusData({
-        busName: "",
         busNumber: "",
+        busName: "",
         routeFrom: "",
         routeTo: "",
+        date: "",
         departureTime: "",
         arrivalTime: "",
-        date: "",
         price: "",
         totalSeats: "",
+        routeStops: [],
       });
 
       setEditMode(false);
@@ -248,7 +271,7 @@ export default function BusesPage() {
                     <div className="h-3 bg-gray-200 rounded w-2/4"></div>
                   </div>
                 ))
-              : buses.map((bus) => (
+              : paginatedBuses.map((bus) => (
                   <div
                     key={bus._id}
                     className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
@@ -392,7 +415,10 @@ export default function BusesPage() {
                   name="busNumber"
                   value={busData.busNumber}
                   onChange={(e) =>
-                    setBusData({ ...busData, busNumber: e.target.value })
+                    setBusData({
+                      ...busData,
+                      busNumber: e.target.value,
+                    })
                   }
                   placeholder="e.g., MH01 AB 1234"
                   type="text"
@@ -513,7 +539,10 @@ export default function BusesPage() {
                     min="1"
                     value={busData.totalSeats}
                     onChange={(e) =>
-                      setBusData({ ...busData, totalSeats: e.target.value })
+                      setBusData({
+                        ...busData,
+                        totalSeats: e.target.value,
+                      })
                     }
                     className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
                   />
@@ -581,6 +610,99 @@ export default function BusesPage() {
                   placeholder="Enter price"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
                 />
+              </div>
+              {/* Route Stops */}
+              <div className="mt-4">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Route Stops
+                </label>
+
+                <div className="space-y-2">
+                  {busData.routeStops.map((stop, index) => (
+                    <div
+                      key={index}
+                      className="flex flex-wrap gap-2 items-center"
+                    >
+                      <input
+                        type="text"
+                        placeholder="Stop Name"
+                        value={stop.stopName}
+                        className="p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
+                        onChange={(e) => {
+                          const updatedStops = [...busData.routeStops];
+                          updatedStops[index].stopName = e.target.value;
+                          setBusData({ ...busData, routeStops: updatedStops });
+                        }}
+                      />
+                      <input
+                        type="time"
+                        placeholder="Arrival Time"
+                        value={stop.arrivalTime}
+                        className="p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-700"
+                        onChange={(e) => {
+                          const updatedStops = [...busData.routeStops];
+                          updatedStops[index].arrivalTime = e.target.value;
+                          setBusData({ ...busData, routeStops: updatedStops });
+                        }}
+                      />
+                      <input
+                        type="time"
+                        placeholder="Departure Time"
+                        value={stop.departureTime}
+                        className="p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-70"
+                        onChange={(e) => {
+                          const updatedStops = [...busData.routeStops];
+                          updatedStops[index].departureTime = e.target.value;
+                          setBusData({ ...busData, routeStops: updatedStops });
+                        }}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Distance Km"
+                        value={stop.distanceKm}
+                        className="p-2 border border-slate-200 rounded-lg text-sm focus:outline-[#004aad] focus:ring-[#004aad] text-gray-70"
+                        onChange={(e) => {
+                          const updatedStops = [...busData.routeStops];
+                          updatedStops[index].distanceKm = e.target.value;
+                          setBusData({ ...busData, routeStops: updatedStops });
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="text-red-700 hover:text-white hover:bg-red-700 rounded text-xs md:text-sm p-1"
+                        onClick={() => {
+                          const updatedStops = busData.routeStops.filter(
+                            (_, i) => i !== index
+                          );
+                          setBusData({ ...busData, routeStops: updatedStops });
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    className="mt-2 p-1 text-xs md:text-sm rounded text-primary hover:text-white hover:bg-primary"
+                    onClick={() =>
+                      setBusData({
+                        ...busData,
+                        routeStops: [
+                          ...busData.routeStops,
+                          {
+                            stopName: "",
+                            arrivalTime: "",
+                            departureTime: "",
+                            distanceKm: "",
+                          },
+                        ],
+                      })
+                    }
+                  >
+                    + Add Stop
+                  </button>
+                </div>
               </div>
 
               {/* Buttons */}
