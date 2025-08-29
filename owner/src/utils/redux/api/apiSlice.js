@@ -2,8 +2,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { clearAuth } from "@/utils/redux/slices/authSlice";
 import { safeLocalStorage } from "@/utils/localStorage";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9090";
 const baseQuery = fetchBaseQuery({
   baseUrl: `${BASE_URL}/api/v1/bus-owner`,
   credentials: "include",

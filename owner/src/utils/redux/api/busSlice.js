@@ -34,7 +34,7 @@ const busSlice = apiSlice.injectEndpoints({
         totalSeats,
         routeStops = [],
       }) => ({
-        url: "/routes",
+        url: "/buses",
         method: "POST",
         body: {
           busNumber,
@@ -53,7 +53,46 @@ const busSlice = apiSlice.injectEndpoints({
       transformResponse: (res) => res.data,
     }),
 
-    // Get all routes
+    // Bulk add buses for all 6  months
+    bulkAddBus: builder.mutation({
+      query: ({
+        busNumber,
+        busName,
+        routeFrom,
+        routeTo,
+        startDate,
+        departureTime,
+        arrivalTime,
+        price,
+        totalSeats,
+        routeStops = [],
+        frequency = "daily",
+        daysOfWeek = [],
+        endDate,
+      }) => ({
+        url: "/routes/bulk",
+        method: "POST",
+        body: {
+          busNumber,
+          busName,
+          routeFrom,
+          routeTo,
+          startDate,
+          departureTime,
+          arrivalTime,
+          price,
+          totalSeats,
+          routeStops,
+          frequency,
+          daysOfWeek,
+          endDate,
+        },
+      }),
+      invalidatesTags: ["Route", "TodayTrips", "RouteStats"],
+      transformResponse: (res) => res.data,
+    }),
+
+   
     getAllBuses: builder.query({
       query: ({ page = 1, limit = 10, date, status } = {}) => {
         const params = new URLSearchParams({
@@ -224,6 +263,7 @@ export const {
   useGetTodaySeatsBookedQuery,
   useGetRouteStatsQuery,
   useAddBusMutation,
+  useBulkAddBusMutation,
   useGetAllBusesQuery,
   useGetBusByIdQuery,
   useUpdateBusMutation,
