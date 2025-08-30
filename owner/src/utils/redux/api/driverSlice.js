@@ -73,6 +73,16 @@ export const driverApiSlice = apiSlice.injectEndpoints({
       ],
       transformResponse: (res) => res.data,
     }),
+
+    verifyDriverInvitation: builder.mutation({
+      query: ({ phoneNumber, otp, firstName, lastName, drivingLicense }) => ({
+        url: `/drivers/verify-invitation`,
+        method: "POST",
+        body: { phoneNumber, otp, firstName, lastName, drivingLicense },
+      }),
+      invalidatesTags: [{ type: "Driver", id: "LIST" }],
+      transformResponse: (res) => res.data,
+    }),
   }),
 });
 
@@ -83,4 +93,5 @@ export const {
   useAssignDriverMutation,
   useGetDriverByIdQuery,
   useUpdateDriverMutation,
+  useVerifyDriverInvitationMutation,
 } = driverApiSlice;

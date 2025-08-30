@@ -11,7 +11,6 @@ const busSlice = apiSlice.injectEndpoints({
       transformResponse: (response) => response.data,
     }),
 
-    // Get route statistics
     getRouteStats: builder.query({
       query: () => ({
         url: "/routes/stats",
@@ -92,7 +91,6 @@ const busSlice = apiSlice.injectEndpoints({
       transformResponse: (res) => res.data,
     }),
 
-   
     getAllBuses: builder.query({
       query: ({ page = 1, limit = 10, date, status } = {}) => {
         const params = new URLSearchParams({
