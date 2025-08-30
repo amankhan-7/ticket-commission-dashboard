@@ -8,15 +8,31 @@ import {
   FaClock,
   FaChair,
   FaPlus,
+  FaExchangeAlt,
+  FaRupeeSign,
+  FaTicketAlt,
 } from "react-icons/fa";
+
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "sonner";
 import {
-  addBus,
-  editBus,
-  deleteBus,
-} from "@/utils/redux/slices/busesSlice";
+  useUpdateBusMutation,
+  useAddBusMutation,
+  useDeleteBusMutation,
+  useGetAllBusesQuery,
+} from "@/utils/redux/api/busSlice";
+import {
+  useGetDriversQuery,
+  useAssignDriverMutation,
+} from "@/utils/redux/api/driverSlice";
+import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { busSchema } from "@/utils/validations/form-validation";
+import { useRouter } from "next/navigation";
+import WeeklySeatsChart from "@/components/chart/WeeklySeatsChart";
+import { safeLocalStorage } from "@/utils/localStorage";
 
 export default function BusesPage() {
   const searchParams = useSearchParams();
@@ -24,35 +40,97 @@ export default function BusesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedBusId, setSelectedBusId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedDrivers, setSelectedDrivers] = useState(null);
 
   const dispatch = useDispatch();
-  const busInfo = useSelector((state) => state.buses); //
+  const router = useRouter();
 
+  const [addBus, { isLoading: isAdding }] = useAddBusMutation();
+  const [updateBus, { isLoading: isUpdating }] = useUpdateBusMutation();
+  const [deleteBus, { isLoading: isDeleting }] = useDeleteBusMutation();
+  const { data, isLoading, refetch } = useGetAllBusesQuery();
+  const fallbackBuses = [
+    { _id: 1, date: "2025-08-09", totalSeats: 40, seatsBooked: 24 },
+  ];
+  const buses = data?.routes ?? fallbackBuses;
+  const chartData = buses.map((bus) => ({
+    date: bus.date,
+    totalSeats: bus.totalSeats ?? 20,
+    seatsBooked: bus.seatsBooked ?? 18,
+  }));
+
+  const { data: driverList = [], isLoading: driversLoading } =
+    useGetDriversQuery();
+  const [assignDriver, { isLoading: isAssigning }] = useAssignDriverMutation();
+
+  const handleSwapRoute = () => {
+    setBusData((prev) => {
+      return {
+        ...prev,
+        routeFrom: prev.routeTo,
+        routeTo: prev.routeFrom,
+      };
+    });
+  };
+  const USERS_PER_PAGE = 6;
+  const totalPages = Math.ceil(buses.length / USERS_PER_PAGE);
+  const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+  const paginatedBuses = buses.slice(startIndex, startIndex + USERS_PER_PAGE);
+
+  const user = useSelector(selectCurrentUser);
+  const initials =
+    user?.firstName && user?.lastName
+      ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
+      : "SB";
+
+  // Load on mount - same as you have
+  useEffect(() => {
+    async function loadSelectedDrivers() {
+      const savedDrivers = await safeLocalStorage.getItem(
+        "selectedDrivers",
+        {}
+      );
+      setSelectedDrivers(savedDrivers);
+    }
+    loadSelectedDrivers();
+  }, []);
+
+  // Save only when selectedDrivers changes
+  useEffect(() => {
+    if (selectedDrivers !== null) {
+      safeLocalStorage.setItem("selectedDrivers", selectedDrivers);
+    }
+  }, [selectedDrivers]);
+
+  // handle showing form based on search param
   useEffect(() => {
     if (searchParams.get("add") === "true") {
       setShowForm(true);
     }
-  }, [dispatch, searchParams, busInfo.length]);
+  }, [searchParams, buses?.length]);
 
   const [busData, setBusData] = useState({
+    busNumber: "",
     busName: "",
-    from: "",
-    to: "",
+    routeFrom: "",
+    routeTo: "",
+    date: "",
     departureTime: "",
     numberOfSeats: "",
     ticketPrice: "",
-    busNumber:"",
-  baseRouteFrom: "",
-  baseRouteTo: "",
-  basePrice: "",
-  totalSeats:"",
-  seatingCapacity: "",
-  busType: "",
-  amenities:"",
-  registrationNumber: "",
-  insuranceExpiry: "",
-  permitExpiry: "",
-  yearOfManufacture: ""
+    busNumber: "",
+    baseRouteFrom: "",
+    baseRouteTo: "",
+    basePrice: "",
+    totalSeats: "",
+    seatingCapacity: "",
+    busType: "",
+    amenities: "",
+    registrationNumber: "",
+    insuranceExpiry: "",
+    permitExpiry: "",
+    yearOfManufacture: "",
   });
 
   // Bulk creation state
@@ -62,7 +140,7 @@ export default function BusesPage() {
     routeFrom: "",
     routeTo: "",
     startDate: "",
-    endDate:"",
+    endDate: "",
     departureTime: "",
     arrivalTime: "",
     price: "",
@@ -73,100 +151,141 @@ export default function BusesPage() {
   });
 
   const addRouteStop = () => {
-  setBulkBusData({
-    ...bulkBusData,
-    routeStops: [
-      ...bulkBusData.routeStops,
-      {
-        name: "",
-        district: "",
-        stopOrder: bulkBusData.routeStops.length + 1,
-        stopType: bulkBusData.routeStops.length === 0 ? "start" : "intermediate",
-        arrivalTime: "",
-        departureTime: "",
-        haltDuration: 0,
-        priceFromMain: 0,
-        priceToMain: 0,
-        customPrice: null,
-        distanceFromMain: 0,
-        distanceToMain: 0,
-        facilities: [],
-        notes: "",
-      },
-    ],
-  });
-};
+    setBulkBusData({
+      ...bulkBusData,
+      routeStops: [
+        ...bulkBusData.routeStops,
+        {
+          name: "",
+          district: "",
+          stopOrder: bulkBusData.routeStops.length + 1,
+          stopType:
+            bulkBusData.routeStops.length === 0 ? "start" : "intermediate",
+          arrivalTime: "",
+          departureTime: "",
+          haltDuration: 0,
+          priceFromMain: 0,
+          priceToMain: 0,
+          customPrice: null,
+          distanceFromMain: 0,
+          distanceToMain: 0,
+          facilities: [],
+          notes: "",
+        },
+      ],
+    });
+  };
 
-const updateRouteStop = (index, field, value) => {
-  const updatedStops = [...bulkBusData.routeStops];
-  updatedStops[index][field] = value;
-  setBulkBusData({ ...bulkBusData, routeStops: updatedStops });
-};
+  const updateRouteStop = (index, field, value) => {
+    const updatedStops = [...bulkBusData.routeStops];
+    updatedStops[index][field] = value;
+    setBulkBusData({ ...bulkBusData, routeStops: updatedStops });
+  };
 
-const removeRouteStop = (index) => {
-  setBulkBusData({
-    ...bulkBusData,
-    routeStops: bulkBusData.routeStops.filter((_, i) => i !== index),
-  });
-};
-
+  const removeRouteStop = (index) => {
+    setBulkBusData({
+      ...bulkBusData,
+      routeStops: bulkBusData.routeStops.filter((_, i) => i !== index),
+    });
+  };
 
   const [isBulkCreating, setIsBulkCreating] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const newBus = {
-      id: editMode ? selectedBusId : Date.now(),
-      name: busData.busName,
-      route: `${busData.from} - ${busData.to}`,
-      time: busData.departureTime,
-      seats: busData.numberOfSeats,
-      price: busData.ticketPrice,
-    };
-
-    if (editMode) {
-      dispatch(editBus(newBus));
-    } else {
-      dispatch(addBus(newBus));
+    if (
+      !busData.busNumber ||
+      !busData.routeFrom ||
+      !busData.routeTo ||
+      !busData.price ||
+      !busData.busName ||
+      !busData.date ||
+      !busData.arrivalTime ||
+      !busData.departureTime
+    ) {
+      toast.error("Please fill all required fields");
+      return;
     }
 
-    // Reset form
-    setEditMode(false);
-    setSelectedBusId(null);
-    setBusData({
-      busName: "",
-      from: "",
-      to: "",
-      departureTime: "",
-      numberOfSeats: "",
-      ticketPrice: "",
-    });
-    setShowForm(false);
+    const payload = {
+      ...busData,
+      price: Number(busData.price),
+      totalSeats: Number(busData.totalSeats),
+      routeStops: busData.routeStops.map((stop, index) => {
+        const stopData = { stopOrder: (index + 1).toString() };
+        if (stop.stopName) stopData.stopName = stop.stopName;
+        if (stop.arrivalTime) stopData.arrivalTime = stop.arrivalTime;
+        if (stop.departureTime) stopData.departureTime = stop.departureTime;
+        if (stop.distanceKm) stopData.distanceKm = Number(stop.distanceKm);
+        return stopData;
+      }),
+    };
+
+    try {
+      if (editMode && selectedBusId) {
+        await updateBus({ routeId: selectedBusId, ...payload }).unwrap();
+        toast.success("Bus updated successfully");
+      } else {
+        await addBus(payload).unwrap();
+        toast.success("Bus route added successfully");
+        refetch();
+      }
+
+      setBusData({
+        busNumber: "",
+        busName: "",
+        routeFrom: "",
+        routeTo: "",
+        date: "",
+        departureTime: "",
+        arrivalTime: "",
+        price: "",
+        totalSeats: "",
+        routeStops: [],
+      });
+
+      setEditMode(false);
+      setSelectedBusId(null);
+      setShowForm(false);
+    } catch (error) {
+      console.error("Submit failed:", error);
+      toast.error("Something went wrong");
+    }
   };
 
   const handleBulkSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!bulkBusData.busNumber || !bulkBusData.busName || !bulkBusData.routeFrom || 
-        !bulkBusData.routeTo || !bulkBusData.startDate || !bulkBusData.departureTime || 
-        !bulkBusData.arrivalTime || !bulkBusData.price|| !bulkBusData.endDate) {
-      alert('Please fill in all required fields');
+
+    if (
+      !bulkBusData.busNumber ||
+      !bulkBusData.busName ||
+      !bulkBusData.routeFrom ||
+      !bulkBusData.routeTo ||
+      !bulkBusData.startDate ||
+      !bulkBusData.departureTime ||
+      !bulkBusData.arrivalTime ||
+      !bulkBusData.price ||
+      !bulkBusData.endDate
+    ) {
+      alert("Please fill in all required fields");
       return;
     }
 
-    if (bulkBusData.frequency === 'weekly' && bulkBusData.daysOfWeek.length === 0) {
-      alert('Please select at least one day of the week for weekly frequency');
+    if (
+      bulkBusData.frequency === "weekly" &&
+      bulkBusData.daysOfWeek.length === 0
+    ) {
+      alert("Please select at least one day of the week for weekly frequency");
       return;
     }
 
     setIsBulkCreating(true);
-    
+
     try {
-      const response = await fetch('/api/v1/bus-owner/buses/routes/bulk', {
-        method: 'POST',
+      const response = await fetch("/api/v1/bus-owner/buses/routes/bulk", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           busNumber: bulkBusData.busNumber,
@@ -174,7 +293,7 @@ const removeRouteStop = (index) => {
           routeFrom: bulkBusData.routeFrom,
           routeTo: bulkBusData.routeTo,
           startDate: bulkBusData.startDate,
-          endDate:bulkBusData.endDate,
+          endDate: bulkBusData.endDate,
           departureTime: bulkBusData.departureTime,
           arrivalTime: bulkBusData.arrivalTime,
           price: parseInt(bulkBusData.price),
@@ -186,17 +305,17 @@ const removeRouteStop = (index) => {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         alert(`Successfully created ${result.data.routesCreated} routes!`);
-     
+
         setBulkBusData({
           busNumber: "",
           busName: "",
           routeFrom: "",
           routeTo: "",
           startDate: "",
-          endDate:"",
+          endDate: "",
           departureTime: "",
           arrivalTime: "",
           price: "",
@@ -208,8 +327,8 @@ const removeRouteStop = (index) => {
         alert(`Error: ${result.message}`);
       }
     } catch (error) {
-      console.error('Bulk creation failed:', error);
-      alert('Failed to create routes. Please try again.');
+      console.error("Bulk creation failed:", error);
+      alert("Failed to create routes. Please try again.");
     } finally {
       setIsBulkCreating(false);
     }
@@ -222,12 +341,12 @@ const removeRouteStop = (index) => {
   ];
 
   const handleChange = (e) => {
-  const { name, value } = e.target;
-  setBusData((prev) => ({
-    ...prev,
-    [name]: value,
-  }));
-};
+    const { name, value } = e.target;
+    setBusData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
       <BottomNav />
@@ -238,119 +357,177 @@ const removeRouteStop = (index) => {
           <h1 className="text-xl font-semibold text-[#004aad] mb-4 md:mb-0">
             Buses
           </h1>
-          <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-3  cursor-pointer"
+            onClick={() => router.push("/account")}
+          >
             <div className="w-10 h-10 rounded-full bg-[#004aad] text-white flex items-center justify-center font-semibold">
-              AR
+              {initials}
             </div>
             <div>
-              <div className="font-medium text-gray-800">Ankush Raj</div>
+              <div className="font-medium text-gray-800">
+                {user?.firstName || user?.lastName
+                  ? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()
+                  : "Unknown Owner"}
+              </div>
               <div className="text-sm text-gray-500">Bus Owner</div>
             </div>
           </div>
         </div>
 
         {/* Top bar with title and add button */}
-        <div className="flex flex-row sm:flex-row justify-between items-start max-w-5xl mx-auto w-full sm:items-center mb-4 gap-3">
-          <h2 className="text-[#004aad] text-[22px] font-semibold">
-            Your Buses
-          </h2>
-          <button
-            onClick={(e) => setShowForm(true)}
-            className="flex items-center text-xs gap-2 bg-[#004aad] text-white h-8 px-4 py-2 rounded hover:bg-[#0056b3] transition cursor-pointer"
-          >
-            <FaPlus />
-            Add Buses
-          </button>
+        <div className=" max-w-5xl mx-auto w-full mb-4">
+          <div className="flex justify-between items-center gap-3">
+            <h2 className="text-[#004aad] text-[22px] font-semibold">
+              Your Buses
+            </h2>
+            <button
+              onClick={(e) => setShowForm(true)}
+              className="flex items-center text-xs gap-2 bg-[#004aad] text-white h-8 px-4 py-2 rounded hover:bg-[#0056b3] transition cursor-pointer"
+            >
+              <FaPlus />
+              Add Buses
+            </button>
+          </div>
           <form
-  onSubmit={handleSubmit}
-  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
->
- 
-</form>
-
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+          ></form>
         </div>
 
         {/* Bus Cards Grid */}
         <div className="max-w-5xl mx-auto w-full animate-fadeInUp">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {busInfo.map((bus) => (
-              <div
-                key={bus.id}
-                className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
-              >
-                {/* Header */}
-                <div className="flex justify-between items-center px-4 py-3.5 border-b border-gray-200">
-                  <h2 className="text-base font-semibold text-gray-800">
-                    {bus.name}
-                  </h2>
-                  <div className="flex items-center gap-2 text-[#004aad]">
-                    <button
-                      title="Edit Bus"
-                      onClick={() => {
-                        setShowForm(true);
-                        setEditMode(true);
-                        setSelectedBusId(bus.id);
-                        setBusData({
-                          busName: bus.name,
-                          from: bus.route.split(" - ")[0],
-                          to: bus.route.split(" - ")[1],
-                          departureTime: bus.time,
-                          numberOfSeats: bus.seats,
-                          ticketPrice: bus.price,
-                        });
-                      }}
-                      className="bg-[#007bff1a] hover:bg-[#007bff33] py-2 pl-2 pr-1.5 rounded-lg transition duration-200"
-                    >
-                      <FaEdit className="text-[#004aad]" />
-                    </button>
-                    <button
-                      onClick={() => dispatch(deleteBus(bus.id))}
-                      title="Delete Bus"
-                      className="bg-[#007bff1a] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
-                    >
-                      <FaTrash className="text-[#004aad]" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bus Details */}
-                <div className="flex flex-wrap justify-between gap-2 px-4 py-4 border-b border-gray-200 text-sm text-gray-700">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <FaRoute className="text-[#004aad]" />
-                    <span>{bus.route}</span>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <FaClock className="text-[#004aad]" />
-                    <span>{bus.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <FaChair className="text-[#004aad]" />
-                    <span>{bus.seats}</span>
-                  </div>
-                </div>
-
-                {/* Driver Dropdown */}
-                <div className="flex items-center justify-between px-4 py-3 bg-[#f8f9fa] text-sm text-gray-700">
-                  <label className="font-medium">Driver:</label>
-                  <select
-                    className="border border-gray-300 font-semibold rounded px-2 py-1 w-full md:w-56 text-sm focus:outline-none focus:ring focus:ring-[#0056b3]"
-                    defaultValue=""
+            {isLoading
+              ? Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="bg-white shadow rounded-sm animate-pulse p-4"
                   >
-                    <option value="" className="font-semibold" disabled>
-                      Assign Driver
-                    </option>
-                    {drivers.map((driver) => (
-                      <option
-                        key={driver.id}
-                        className="font-semibold"
-                        value={driver.id}
+                    <div className="h-4 bg-gray-300 rounded w-1/2 mb-3"></div>
+                    <div className="h-3 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-2/4"></div>
+                  </div>
+                ))
+              : paginatedBuses.map((bus) => (
+                  <div
+                    key={bus._id}
+                    className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
+                  >
+                    {/* Header */}
+                    <div className="flex justify-between items-center px-4 py-3.5 border-b border-gray-200">
+                      <h2 className="text-base font-semibold text-gray-800">
+                        {bus.busName}
+                        <p className="font-light text-xs text-gray-500">
+                          {bus.busNumber}
+                        </p>
+                      </h2>
+                      <div className="flex items-center gap-2 text-[#004aad]">
+                        <button
+                          title="Edit Bus"
+                          onClick={() => {
+                            setShowForm(true);
+                            setEditMode(true);
+                            setSelectedBusId(bus._id);
+                            setBusData({
+                              busNumber: bus.busNumber || "",
+                              busName: bus.busName || "",
+                              routeFrom: bus.routeFrom || "",
+                              routeTo: bus.routeTo || "",
+                              date: bus.date || "",
+                              departureTime: bus.departureTime || "",
+                              arrivalTime: bus.arrivalTime || "",
+                              totalSeats: bus.totalSeats?.toString() || "",
+                              price: bus.price?.toString() || "",
+                            });
+                          }}
+                          className="bg-[#007bff1a] hover:bg-[#007bff33] py-2 pl-2 pr-1.5 rounded-lg transition duration-200"
+                        >
+                          <FaEdit className="text-[#004aad]" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(bus._id)}
+                          title="Delete Bus"
+                          className="bg-[#007bff1a] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
+                        >
+                          <FaTrash className="text-[#004aad]" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Bus Details */}
+                    <div className="flex flex-col justify-between gap-2 px-4 py-4 border-b border-gray-200 text-sm text-gray-700">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaRoute className="text-[#004aad]" />
+                        <span>
+                          {bus.routeFrom} → {bus.routeTo}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaClock className="text-[#004aad]" />
+                        <span>
+                          {bus.departureTime} - {bus.arrivalTime}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaChair className="text-[#004aad]" />
+                        <span>{bus.totalSeats}</span>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaTicketAlt className="text-[#004aad]" />
+                        <span>{bus.seatsBooked}</span>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaRupeeSign className="text-[#004aad]" />
+                        <span>{bus.price}</span>
+                      </div>
+                    </div>
+
+                    {/* Driver Dropdown */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#f8f9fa] text-sm text-gray-700">
+                      <label className="font-medium">Driver:</label>
+                      <select
+                        className="border border-gray-300 font-semibold rounded px-2 py-1 w-full md:w-56 text-sm focus:outline-none focus:ring focus:ring-[#0056b3]"
+                        value={selectedDrivers[bus._id] || ""}
+                        onChange={(e) =>
+                          handleAssignDriver(e.target.value, bus._id)
+                        }
+                        disabled={isAssigning}
                       >
-                        {driver.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+                        <option value="" className="font-semibold" disabled>
+                          Assign Driver
+                        </option>
+                        {driverList.map((driver) => (
+                          <option
+                            disabled={
+                              driver.assignedTo && driver.assignedTo !== bus._id
+                            }
+                            key={driver._id}
+                            value={driver._id}
+                            className="font-semibold"
+                          >
+                            {driver.driverName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+          </div>
+          {/* Pagination */}
+          <div className="flex justify-center items-center gap-2 py-4 flex-wrap">
+            {Array.from({ length: totalPages }, (_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentPage(index + 1)}
+                className={`w-8 h-8 flex items-center justify-center rounded-full border text-sm font-semibold ${
+                  currentPage === index + 1
+                    ? "bg-[#004aad] text-white"
+                    : "bg-white border-gray-300 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {index + 1}
+              </button>
             ))}
           </div>
         </div>
@@ -363,232 +540,277 @@ const removeRouteStop = (index) => {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-             {/* Bus Name */}
-  <div>
-    <label htmlFor="busName" className="block mb-2 text-sm font-medium text-gray-700">
-      Bus Name
-    </label>
-    <input
-      id="busName"
-      name="busName"
-      value={busData.busName}
-      onChange={handleChange}
-      placeholder="Enter bus name"
-      type="text"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Bus Name */}
+              <div>
+                <label
+                  htmlFor="busName"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Bus Name
+                </label>
+                <input
+                  id="busName"
+                  name="busName"
+                  value={busData.busName}
+                  onChange={handleChange}
+                  placeholder="Enter bus name"
+                  type="text"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Bus Number */}
-  <div>
-    <label htmlFor="busNumber" className="block mb-2 text-sm font-medium text-gray-700">
-      Bus Number
-    </label>
-    <input
-      id="busNumber"
-      name="busNumber"
-      value={busData.busNumber || ""}
-      onChange={handleChange}
-      placeholder="Enter bus number"
-      type="text"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Bus Number */}
+              <div>
+                <label
+                  htmlFor="busNumber"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Bus Number
+                </label>
+                <input
+                  id="busNumber"
+                  name="busNumber"
+                  value={busData.busNumber || ""}
+                  onChange={handleChange}
+                  placeholder="Enter bus number"
+                  type="text"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Route From */}
-  <div>
-    <label htmlFor="from" className="block mb-2 text-sm font-medium text-gray-700">
-      Route From
-    </label>
-    <input
-      id="from"
-      name="from"
-      value={busData.from}
-      onChange={handleChange}
-      placeholder="Enter starting location"
-      type="text"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Route From */}
+              <div>
+                <label
+                  htmlFor="from"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Route From
+                </label>
+                <input
+                  id="from"
+                  name="from"
+                  value={busData.from}
+                  onChange={handleChange}
+                  placeholder="Enter starting location"
+                  type="text"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Route To */}
-  <div>
-    <label htmlFor="to" className="block mb-2 text-sm font-medium text-gray-700">
-      Route To
-    </label>
-    <input
-      id="to"
-      name="to"
-      value={busData.to}
-      onChange={handleChange}
-      placeholder="Enter destination location"
-      type="text"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Route To */}
+              <div>
+                <label
+                  htmlFor="to"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Route To
+                </label>
+                <input
+                  id="to"
+                  name="to"
+                  value={busData.to}
+                  onChange={handleChange}
+                  placeholder="Enter destination location"
+                  type="text"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Departure Time */}
-  <div>
-    <label htmlFor="departureTime" className="block mb-2 text-sm font-medium text-gray-700">
-      Departure Time
-    </label>
-    <input
-      id="departureTime"
-      name="departureTime"
-      value={busData.departureTime}
-      onChange={handleChange}
-      type="time"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Departure Time */}
+              <div>
+                <label
+                  htmlFor="departureTime"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Departure Time
+                </label>
+                <input
+                  id="departureTime"
+                  name="departureTime"
+                  value={busData.departureTime}
+                  onChange={handleChange}
+                  type="time"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Total Seats */}
-  <div>
-    <label htmlFor="totalSeats" className="block mb-2 text-sm font-medium text-gray-700">
-      Total Seats
-    </label>
-    <input
-      id="totalSeats"
-      name="totalSeats"
-      value={busData.totalSeats}
-      onChange={handleChange}
-      type="number"
-      placeholder="e.g., 17"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
- 
+              {/* Total Seats */}
+              <div>
+                <label
+                  htmlFor="totalSeats"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Total Seats
+                </label>
+                <input
+                  id="totalSeats"
+                  name="totalSeats"
+                  value={busData.totalSeats}
+                  onChange={handleChange}
+                  type="number"
+                  placeholder="e.g., 17"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Ticket Price */}
-  <div>
-    <label htmlFor="ticketPrice" className="block mb-2 text-sm font-medium text-gray-700">
-      Ticket Price
-    </label>
-    <input
-      id="ticketPrice"
-      name="ticketPrice"
-      value={busData.ticketPrice}
-      onChange={handleChange}
-      type="number"
-      placeholder="Enter ticket price"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Ticket Price */}
+              <div>
+                <label
+                  htmlFor="ticketPrice"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Ticket Price
+                </label>
+                <input
+                  id="ticketPrice"
+                  name="ticketPrice"
+                  value={busData.ticketPrice}
+                  onChange={handleChange}
+                  type="number"
+                  placeholder="Enter ticket price"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Base Price */}
-  <div>
-    <label htmlFor="basePrice" className="block mb-2 text-sm font-medium text-gray-700">
-      Base Price
-    </label>
-    <input
-      id="basePrice"
-      name="basePrice"
-      value={busData.basePrice || ""}
-      onChange={handleChange}
-      type="number"
-      placeholder="Enter base price"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Base Price */}
+              <div>
+                <label
+                  htmlFor="basePrice"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Base Price
+                </label>
+                <input
+                  id="basePrice"
+                  name="basePrice"
+                  value={busData.basePrice || ""}
+                  onChange={handleChange}
+                  type="number"
+                  placeholder="Enter base price"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Bus Type */}
-  <div>
-    <label htmlFor="busType" className="block mb-2 text-sm font-medium text-gray-700">
-      Bus Type
-    </label>
-    <select
-      id="busType"
-      name="busType"
-      value={busData.busType || ""}
-      onChange={handleChange}
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    >
-      <option value="">Select Type</option>
-      <option value="AC">AC</option>
-      <option value="Non-AC">Non-AC</option>
-      <option value="Sleeper">Sleeper</option>
-    </select>
-  </div>
+              {/* Bus Type */}
+              <div>
+                <label
+                  htmlFor="busType"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Bus Type
+                </label>
+                <select
+                  id="busType"
+                  name="busType"
+                  value={busData.busType || ""}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                >
+                  <option value="">Select Type</option>
+                  <option value="AC">AC</option>
+                  <option value="Non-AC">Non-AC</option>
+                  <option value="Sleeper">Sleeper</option>
+                </select>
+              </div>
 
-  {/* Amenities */}
-  <div>
-    <label htmlFor="amenities" className="block mb-2 text-sm font-medium text-gray-700">
-      Amenities (comma separated,('WiFi', 'USB Charging', 'Water Bottle', 'Snacks', 'Blanket', 'Pillow'))
-    </label>
-    <input
-      id="amenities"
-      name="amenities"
-      value={busData.amenities || ""}
-      onChange={(e) =>
-        setBusData({ ...busData, amenities: e.target.value.split(",") })
-      }
-      placeholder="e.g., USB Charging, WiFi"
-      type="text"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Amenities */}
+              <div>
+                <label
+                  htmlFor="amenities"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Amenities (comma separated,('WiFi', 'USB Charging', 'Water
+                  Bottle', 'Snacks', 'Blanket', 'Pillow'))
+                </label>
+                <input
+                  id="amenities"
+                  name="amenities"
+                  value={busData.amenities || ""}
+                  onChange={(e) =>
+                    setBusData({
+                      ...busData,
+                      amenities: e.target.value.split(","),
+                    })
+                  }
+                  placeholder="e.g., USB Charging, WiFi"
+                  type="text"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Registration Number */}
-  <div>
-    <label htmlFor="registrationNumber" className="block mb-2 text-sm font-medium text-gray-700">
-      Registration Number
-    </label>
-    <input
-      id="registrationNumber"
-      name="registrationNumber"
-      value={busData.registrationNumber || ""}
-      onChange={handleChange}
-      placeholder="e.g., MH01AB1234"
-      type="text"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Registration Number */}
+              <div>
+                <label
+                  htmlFor="registrationNumber"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Registration Number
+                </label>
+                <input
+                  id="registrationNumber"
+                  name="registrationNumber"
+                  value={busData.registrationNumber || ""}
+                  onChange={handleChange}
+                  placeholder="e.g., MH01AB1234"
+                  type="text"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Insurance Expiry */}
-  <div>
-    <label htmlFor="insuranceExpiry" className="block mb-2 text-sm font-medium text-gray-700">
-      Insurance Expiry
-    </label>
-    <input
-      id="insuranceExpiry"
-      name="insuranceExpiry"
-      type="date"
-      value={busData.insuranceExpiry || ""}
-      onChange={handleChange}
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Insurance Expiry */}
+              <div>
+                <label
+                  htmlFor="insuranceExpiry"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Insurance Expiry
+                </label>
+                <input
+                  id="insuranceExpiry"
+                  name="insuranceExpiry"
+                  type="date"
+                  value={busData.insuranceExpiry || ""}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Permit Expiry */}
-  <div>
-    <label htmlFor="permitExpiry" className="block mb-2 text-sm font-medium text-gray-700">
-      Permit Expiry
-    </label>
-    <input
-      id="permitExpiry"
-      name="permitExpiry"
-      type="date"
-      value={busData.permitExpiry || ""}
-      onChange={handleChange}
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Permit Expiry */}
+              <div>
+                <label
+                  htmlFor="permitExpiry"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Permit Expiry
+                </label>
+                <input
+                  id="permitExpiry"
+                  name="permitExpiry"
+                  type="date"
+                  value={busData.permitExpiry || ""}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
-  {/* Year of Manufacture */}
-  <div>
-    <label htmlFor="yearOfManufacture" className="block mb-2 text-sm font-medium text-gray-700">
-      Year of Manufacture
-    </label>
-    <input
-      id="yearOfManufacture"
-      name="yearOfManufacture"
-      type="date"
-      value={busData.yearOfManufacture || ""}
-      onChange={handleChange}
-      placeholder="e.g., 2025"
-      className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-    />
-  </div>
+              {/* Year of Manufacture */}
+              <div>
+                <label
+                  htmlFor="yearOfManufacture"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  Year of Manufacture
+                </label>
+                <input
+                  id="yearOfManufacture"
+                  name="yearOfManufacture"
+                  type="date"
+                  value={busData.yearOfManufacture || ""}
+                  onChange={handleChange}
+                  placeholder="e.g., 2025"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                />
+              </div>
 
               {/* Submit Button */}
               <div className="flex justify-end space-x-3">
@@ -616,7 +838,8 @@ const removeRouteStop = (index) => {
             Bulk Route Creation (6 Months)
           </h2>
           <p className="text-gray-600 mb-6 text-sm">
-            Create routes for all 6 months at once. This will generate buses for the specified frequency and date range.
+            Create routes for all 6 months at once. This will generate buses for
+            the specified frequency and date range.
           </p>
 
           <form onSubmit={handleBulkSubmit} className="space-y-6">
@@ -629,7 +852,10 @@ const removeRouteStop = (index) => {
                 <input
                   value={bulkBusData.busNumber}
                   onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, busNumber: e.target.value })
+                    setBulkBusData({
+                      ...bulkBusData,
+                      busNumber: e.target.value,
+                    })
                   }
                   placeholder="e.g., MH01 AB 1234"
                   type="text"
@@ -661,7 +887,10 @@ const removeRouteStop = (index) => {
                 <input
                   value={bulkBusData.routeFrom}
                   onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, routeFrom: e.target.value })
+                    setBulkBusData({
+                      ...bulkBusData,
+                      routeFrom: e.target.value,
+                    })
                   }
                   placeholder="e.g., Mumbai"
                   type="text"
@@ -693,13 +922,16 @@ const removeRouteStop = (index) => {
                 <input
                   value={bulkBusData.startDate}
                   onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, startDate: e.target.value })
+                    setBulkBusData({
+                      ...bulkBusData,
+                      startDate: e.target.value,
+                    })
                   }
                   type="date"
                   className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
                 />
               </div>
-               <div>
+              <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700">
                   End Date
                 </label>
@@ -719,7 +951,10 @@ const removeRouteStop = (index) => {
                 <input
                   value={bulkBusData.departureTime}
                   onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, departureTime: e.target.value })
+                    setBulkBusData({
+                      ...bulkBusData,
+                      departureTime: e.target.value,
+                    })
                   }
                   type="time"
                   className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
@@ -732,7 +967,10 @@ const removeRouteStop = (index) => {
                 <input
                   value={bulkBusData.arrivalTime}
                   onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, arrivalTime: e.target.value })
+                    setBulkBusData({
+                      ...bulkBusData,
+                      arrivalTime: e.target.value,
+                    })
                   }
                   type="time"
                   className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
@@ -749,7 +987,10 @@ const removeRouteStop = (index) => {
                 <select
                   value={bulkBusData.frequency}
                   onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, frequency: e.target.value })
+                    setBulkBusData({
+                      ...bulkBusData,
+                      frequency: e.target.value,
+                    })
                   }
                   className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
                 >
@@ -779,7 +1020,10 @@ const removeRouteStop = (index) => {
                 <input
                   value={bulkBusData.totalSeats}
                   onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, totalSeats: e.target.value })
+                    setBulkBusData({
+                      ...bulkBusData,
+                      totalSeats: e.target.value,
+                    })
                   }
                   placeholder="e.g., 32"
                   type="number"
@@ -789,13 +1033,21 @@ const removeRouteStop = (index) => {
             </div>
 
             {/* Weekly Frequency Options */}
-            {bulkBusData.frequency === 'weekly' && (
+            {bulkBusData.frequency === "weekly" && (
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700">
                   Days of Week
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day, index) => (
+                  {[
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday",
+                    "Saturday",
+                    "Sunday",
+                  ].map((day, index) => (
                     <label key={day} className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -805,12 +1057,17 @@ const removeRouteStop = (index) => {
                           if (e.target.checked) {
                             setBulkBusData({
                               ...bulkBusData,
-                              daysOfWeek: [...bulkBusData.daysOfWeek, dayNumber]
+                              daysOfWeek: [
+                                ...bulkBusData.daysOfWeek,
+                                dayNumber,
+                              ],
                             });
                           } else {
                             setBulkBusData({
                               ...bulkBusData,
-                              daysOfWeek: bulkBusData.daysOfWeek.filter(d => d !== dayNumber)
+                              daysOfWeek: bulkBusData.daysOfWeek.filter(
+                                (d) => d !== dayNumber
+                              ),
                             });
                           }
                         }}
@@ -822,156 +1079,178 @@ const removeRouteStop = (index) => {
                 </div>
               </div>
             )}
-         {/* Route Stops (Optional) */}
-<div className="space-y-4">
-  <label className="block text-gray-700 font-medium">
-    Route Stops (Optional)
-  </label>
+            {/* Route Stops (Optional) *****************************************************************/}
+            <div className="space-y-4">
+              <label className="block text-gray-700 font-medium">
+                Route Stops (Optional)
+              </label>
 
-  {bulkBusData.routeStops.map((stop, index) => (
-    <div
-      key={index}
-      className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm space-y-3"
-    >
-      <div className="flex justify-between items-center">
-        <h4 className="text-gray-800 font-semibold">
-          Stop {index + 1} ({stop.stopType})
-        </h4>
-        <button
-          type="button"
-          onClick={() => removeRouteStop(index)}
-          className="text-red-500 text-sm hover:underline"
-        >
-          Remove
-        </button>
-      </div>
+              {bulkBusData.routeStops.map((stop, index) => (
+                <div
+                  key={index}
+                  className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm space-y-3"
+                >
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-gray-800 font-semibold">
+                      Stop {index + 1} ({stop.stopType})
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => removeRouteStop(index)}
+                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm text-gray-600">Stop Name</label>
-          <input
-            type="text"
-            value={stop.name}
-            onChange={(e) => updateRouteStop(index, "name", e.target.value)}
-            className="w-full p-2 border rounded-lg"
-          />
-        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-600">
+                        Stop Name
+                      </label>
+                      <input
+                        type="text"
+                        value={stop.name}
+                        onChange={(e) =>
+                          updateRouteStop(index, "name", e.target.value)
+                        }
+                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                      />
+                    </div>
 
-        <div>
-          <label className="block text-sm text-gray-600">District</label>
-          <input
-            type="text"
-            value={stop.district}
-            onChange={(e) => updateRouteStop(index, "district", e.target.value)}
-            className="w-full p-2 border rounded-lg"
-          />
-        </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">
+                        District
+                      </label>
+                      <input
+                        type="text"
+                        value={stop.district}
+                        onChange={(e) =>
+                          updateRouteStop(index, "district", e.target.value)
+                        }
+                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                      />
+                    </div>
 
-        <div>
-          <label className="block text-sm text-gray-600">Arrival Time</label>
-          <input
-            type="time"
-            value={stop.arrivalTime}
-            onChange={(e) =>
-              updateRouteStop(index, "arrivalTime", e.target.value)
-            }
-            className="w-full p-2 border rounded-lg"
-          />
-        </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">
+                        Arrival Time
+                      </label>
+                      <input
+                        type="time"
+                        value={stop.arrivalTime}
+                        onChange={(e) =>
+                          updateRouteStop(index, "arrivalTime", e.target.value)
+                        }
+                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                      />
+                    </div>
 
-        <div>
-          <label className="block text-sm text-gray-600">Departure Time</label>
-          <input
-            type="time"
-            value={stop.departureTime}
-            onChange={(e) =>
-              updateRouteStop(index, "departureTime", e.target.value)
-            }
-            className="w-full p-2 border rounded-lg"
-          />
-        </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">
+                        Departure Time
+                      </label>
+                      <input
+                        type="time"
+                        value={stop.departureTime}
+                        onChange={(e) =>
+                          updateRouteStop(
+                            index,
+                            "departureTime",
+                            e.target.value
+                          )
+                        }
+                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                      />
+                    </div>
 
-        <div>
-          <label className="block text-sm text-gray-600">
-            Halt Duration (minutes)
-          </label>
-          <input
-            type="number"
-            value={stop.haltDuration}
-            onChange={(e) =>
-              updateRouteStop(index, "haltDuration", parseInt(e.target.value))
-            }
-            className="w-full p-2 border rounded-lg"
-          />
-        </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">
+                        Halt Duration (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        value={stop.haltDuration}
+                        onChange={(e) =>
+                          updateRouteStop(
+                            index,
+                            "haltDuration",
+                            parseInt(e.target.value)
+                          )
+                        }
+                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                      />
+                    </div>
 
-        <div>
-          <label className="block text-sm text-gray-600">
-            Distance From Main (km)
-          </label>
-          <input
-            type="number"
-            value={stop.distanceFromMain}
-            onChange={(e) =>
-              updateRouteStop(
-                index,
-                "distanceFromMain",
-                parseInt(e.target.value)
-              )
-            }
-            className="w-full p-2 border rounded-lg"
-          />
-        </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">
+                        Distance From Main (km)
+                      </label>
+                      <input
+                        type="number"
+                        value={stop.distanceFromMain}
+                        onChange={(e) =>
+                          updateRouteStop(
+                            index,
+                            "distanceFromMain",
+                            parseInt(e.target.value)
+                          )
+                        }
+                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                      />
+                    </div>
 
-        <div>
-          <label className="block text-sm text-gray-600">
-            Distance To Main (km)
-          </label>
-          <input
-            type="number"
-            value={stop.distanceToMain}
-            onChange={(e) =>
-              updateRouteStop(
-                index,
-                "distanceToMain",
-                parseInt(e.target.value)
-              )
-            }
-            className="w-full p-2 border rounded-lg"
-          />
-        </div>
-      </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">
+                        Distance To Main (km)
+                      </label>
+                      <input
+                        type="number"
+                        value={stop.distanceToMain}
+                        onChange={(e) =>
+                          updateRouteStop(
+                            index,
+                            "distanceToMain",
+                            parseInt(e.target.value)
+                          )
+                        }
+                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                      />
+                    </div>
+                  </div>
 
-      <div>
-        <label className="block text-sm text-gray-600">Notes</label>
-        <textarea
-          value={stop.notes}
-          onChange={(e) => updateRouteStop(index, "notes", e.target.value)}
-          className="w-full p-2 border rounded-lg"
-        />
-      </div>
-    </div>
-  ))}
+                  <div>
+                    <label className="block text-sm text-gray-600">Notes</label>
+                    <textarea
+                      value={stop.notes}
+                      onChange={(e) =>
+                        updateRouteStop(index, "notes", e.target.value)
+                      }
+                      className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                    />
+                  </div>
+                </div>
+              ))}
 
-  <button
-    type="button"
-    onClick={addRouteStop}
-    className="px-4 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition"
-  >
-    + Add Stop
-  </button>
-</div>
-
-
+              <button
+                type="button"
+                onClick={addRouteStop}
+                className="px-4 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition"
+              >
+                + Add Stop
+              </button>
+            </div>
 
             {/* Submit Button */}
-            <div className="flex justify-end">
+            <div className="flex justify-center md:justify-end w-full">
               <button
                 type="submit"
                 disabled={isBulkCreating}
                 className="px-6 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isBulkCreating ? "Creating Routes..." : "Create Routes for 12 Months"}
+                {isBulkCreating
+                  ? "Creating Routes..."
+                  : "Create Routes for 12 Months"}
               </button>
             </div>
           </form>

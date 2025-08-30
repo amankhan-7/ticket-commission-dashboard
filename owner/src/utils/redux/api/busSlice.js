@@ -208,52 +208,52 @@ const busSlice = apiSlice.injectEndpoints({
     }),
 
     // Driver management
-    getDrivers: builder.query({
-      query: () => ({
-        url: "/drivers",
-        method: "GET",
-      }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ _id }) => ({ type: "Driver", id: _id })),
-              { type: "Driver", id: "LIST" },
-            ]
-          : [{ type: "Driver", id: "LIST" }],
-      transformResponse: (res) => res.data,
-    }),
+    // getDrivers: builder.query({
+    //   query: () => ({
+    //     url: "/drivers",
+    //     method: "GET",
+    //   }),
+    //   providesTags: (result) =>
+    //     result
+    //       ? [
+    //           ...result.map(({ _id }) => ({ type: "Driver", id: _id })),
+    //           { type: "Driver", id: "LIST" },
+    //         ]
+    //       : [{ type: "Driver", id: "LIST" }],
+    //   transformResponse: (res) => res.data,
+    // }),
 
-    addDrivers: builder.mutation({
-      query: ({ ownerId, name, phoneNumber, drivingLicense, joinedAt }) => ({
-        url: `/drivers`,
-        method: "POST",
-        body: { ownerId, name, phoneNumber, drivingLicense, joinedAt },
-      }),
-      invalidatesTags: [{ type: "Driver", id: "LIST" }],
-      transformResponse: (res) => res.data,
-    }),
+    // addDrivers: builder.mutation({
+    //   query: ({ ownerId, name, phoneNumber, drivingLicense, joinedAt }) => ({
+    //     url: `/drivers`,
+    //     method: "POST",
+    //     body: { ownerId, name, phoneNumber, drivingLicense, joinedAt },
+    //   }),
+    //   invalidatesTags: [{ type: "Driver", id: "LIST" }],
+    //   transformResponse: (res) => res.data,
+    // }),
 
-    deleteDrivers: builder.mutation({
-      query: ({ id }) => ({
-        url: `/drivers/${id}`,
-        method: "DELETE",
-      }),
-      invalidatesTags: [{ type: "Driver", id: "LIST" }],
-      transformResponse: (res) => res.data,
-    }),
+    // deleteDrivers: builder.mutation({
+    //   query: ({ id }) => ({
+    //     url: `/drivers/${id}`,
+    //     method: "DELETE",
+    //   }),
+    //   invalidatesTags: [{ type: "Driver", id: "LIST" }],
+    //   transformResponse: (res) => res.data,
+    // }),
 
-    assignDriver: builder.mutation({
-      query: ({ id, busId }) => ({
-        url: `/drivers/${id}/assign`,
-        method: "PUT",
-        body: { busId },
-      }),
-      invalidatesTags: (result, error, { id }) => [
-        { type: "Driver", id },
-        { type: "Driver", id: "LIST" },
-      ],
-      transformResponse: (res) => res.data,
-    }),
+    // assignDriver: builder.mutation({
+    //   query: ({ id, busId }) => ({
+    //     url: `/drivers/${id}/assign`,
+    //     method: "PUT",
+    //     body: { busId },
+    //   }),
+    //   invalidatesTags: (result, error, { id }) => [
+    //     { type: "Driver", id },
+    //     { type: "Driver", id: "LIST" },
+    //   ],
+    //   transformResponse: (res) => res.data,
+    // }),
   }),
 });
 
@@ -270,10 +270,6 @@ export const {
   useAddRouteStopMutation,
   useUpdateRouteStopMutation,
   useDeleteRouteStopMutation,
-  useGetDriversQuery,
-  useAddDriversMutation,
-  useDeleteDriversMutation,
-  useAssignDriverMutation,
 } = busSlice;
 
 export default busSlice;

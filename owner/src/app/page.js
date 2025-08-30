@@ -1,11 +1,38 @@
 "use client";
 
 import BottomNav from "@/components/UI/BottomNav";
-import { FaBus, FaTicketAlt, FaPlus } from "react-icons/fa";
+import { FaBus, FaTicketAlt, FaPlus, FaCircleNotch } from "react-icons/fa";
 import { useRouter } from "next/navigation";
+import { useGetTodaySeatsBookedQuery } from "@/utils/redux/api/busSlice";
+import { useSelector } from "react-redux";
+import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
+import Image from "next/image";
+import { useEffect } from "react";
 
 export default function HomePage() {
   const router = useRouter();
+
+  const {
+    data,
+    isLoading: busLoading,
+    refetch,
+  } = useGetTodaySeatsBookedQuery();
+
+  const user = useSelector(selectCurrentUser);
+  const profilePic = useSelector((state) => state.profile.profilePic);
+  const initials =
+    user?.firstName && user?.lastName
+      ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
+      : "SB";
+
+  const totalTrips = data?.totalTrips ?? 0;
+  const totalSeatsBooked = data?.totalSeatsBooked ?? 0;
+
+  useEffect(() => {
+    if (user?.token) {
+      refetch(); // ensure it runs after auth is ready
+    }
+  }, [user?.token, refetch]);
 
   const handleAddBus = () => {
     router.push("/buses?add=true");
@@ -23,12 +50,31 @@ export default function HomePage() {
           <h1 className="text-xl font-semibold text-[#004aad] mb-4 sm:mb-0">
             Home
           </h1>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#004aad] text-white flex items-center justify-center font-semibold">
-              AR
-            </div>
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => router.push("/account")}
+          >
+            {profilePic ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden">
+                <Image
+                  src={profilePic}
+                  alt="Profile"
+                  width={40}
+                  height={40}
+                  className="object-cover w-full h-full"
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-[#004aad] text-white flex items-center justify-center font-semibold">
+                {initials}
+              </div>
+            )}
             <div>
-              <div className="font-medium text-gray-800">Ankush Raj</div>
+              <div className="font-medium text-gray-800">
+                {user?.firstName || user?.lastName
+                  ? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()
+                  : "Unknown Owner"}
+              </div>
               <div className="text-sm text-gray-500">Bus Owner</div>
             </div>
           </div>
@@ -38,8 +84,14 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 max-w-5xl mx-auto animate-fadeInUp">
           <div className="bg-white px-4 pt-4 pb-3 rounded-lg shadow flex justify-between items-center">
             <div>
-              <div className="text-sm text-gray-600 mb-3">Today's Trips</div>
-              <div className="text-2xl font-semibold text-gray-800">3</div>
+              <div className="text-sm text-gray-600 mb-3">Total Trips</div>
+              <div className="text-2xl font-semibold text-gray-800">
+                {busLoading ? (
+                  <FaCircleNotch className="animate-spin text-gray-400" />
+                ) : (
+                  totalTrips
+                )}
+              </div>
             </div>
             <div className="w-9 h-9 rounded-lg bg-[#004aad] text-white flex items-center justify-center">
               <FaBus />
@@ -51,7 +103,13 @@ export default function HomePage() {
               <div className="text-sm text-gray-600 mb-3">
                 Seats Booked Today
               </div>
-              <div className="text-2xl font-semibold text-gray-800">14</div>
+              <div className="text-2xl font-semibold text-gray-800">
+                {busLoading ? (
+                  <FaCircleNotch className="animate-spin text-gray-400" />
+                ) : (
+                  totalSeatsBooked
+                )}
+              </div>
             </div>
             <div className="w-9 h-9 rounded-lg bg-green-600 text-white flex items-center justify-center">
               <FaTicketAlt />

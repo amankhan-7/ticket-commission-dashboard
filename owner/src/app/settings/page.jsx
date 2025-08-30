@@ -3,12 +3,23 @@
 import BottomNav from "@/components/UI/BottomNav";
 import { FaSignOutAlt } from "react-icons/fa";
 import { useState } from "react";
+import { useSelector } from "react-redux";
+import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
+import { useRouter } from "next/navigation";
 
 export default function SettingsPage() {
+  const router = useRouter();
+
   const [Account, setAccount] = useState({
     name: "",
     phone: "",
   });
+
+  const user = useSelector(selectCurrentUser);
+  const initials =
+    user?.firstName && user?.lastName
+      ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
+      : "SB";
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -31,12 +42,19 @@ export default function SettingsPage() {
           <h1 className="text-xl font-semibold text-[#004aad] mb-4 md:mb-0">
             Settings
           </h1>
-          <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => router.push("/account")}
+          >
             <div className="w-10 h-10 rounded-full bg-[#004aad] text-white flex items-center justify-center font-semibold">
-              AR
+              {initials}
             </div>
             <div>
-              <div className="font-medium text-gray-800">Ankush Raj</div>
+              <div className="font-medium text-gray-800">
+                {user?.firstName || user?.lastName
+                  ? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()
+                  : "Unknown Owner"}
+              </div>
               <div className="text-sm text-gray-500">Bus Owner</div>
             </div>
           </div>

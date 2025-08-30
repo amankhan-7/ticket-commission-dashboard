@@ -1,5 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+<<<<<<< HEAD
 // Dummy driver data
 const dummyDriverData = [
   {
@@ -29,11 +30,43 @@ const dummyDriverData = [
 ];
 
 const initialState = [...dummyDriverData];
+=======
+// Dummy drivers data 
+const dummyData = [
+  {
+    _id: 1,
+    name: "Rajesh Kumar",
+    assignedTo: "Express 1",
+    phone: "+91 9876543210",
+    joined: "May 10, 2025",
+    status: "Active",
+  },
+  {
+    _id: 2,
+    name: "Sunil Patil",
+    assignedTo: "Express 2",
+    phone: "+91 8765432109",
+    joined: "Apr 15, 2025",
+    status: "Active",
+  },
+  {
+    _id: 3,
+    name: "Amit Sharma",
+    assignedTo: "Night Rider",
+    phone: "+91 7654321098",
+    joined: "Mar 22, 2025",
+    status: "Active",
+  },
+];
+
+const initialState = [...dummyData];
+>>>>>>> origin/amanFrontend
 
 const driverSlice = createSlice({
   name: "drivers",
   initialState,
   reducers: {
+<<<<<<< HEAD
     setInitialDrivers: (state, action) => {
       return action.payload;
     },
@@ -62,10 +95,18 @@ const driverSlice = createSlice({
       if (driver) {
         driver.assignedBus = null;
       }
+=======
+    addDriver: (state, action) => {
+      state.push({ id: Date.now(), ...action.payload });
+    },
+    deleteDriver: (state, action) => {
+      return state.filter(driver => driver.id !== action.payload);
+>>>>>>> origin/amanFrontend
     },
   },
 });
 
+<<<<<<< HEAD
 export const {
   addDriver,
   editDriver,
@@ -75,3 +116,7 @@ export const {
   unassignDriverFromBus,
 } = driverSlice.actions;
 export default driverSlice.reducer;
+=======
+export const { addDriver, deleteDriver } = driverSlice.actions;
+export default driverSlice.reducer;
+>>>>>>> origin/amanFrontend
