@@ -15,6 +15,10 @@ import {
   addDriver,
   deleteDriver,
 } from "@/utils/redux/slices/driversSlice";
+import {
+  useAddDriverMutation,
+  useVerifyDriverInvitationMutation,
+} from "@/utils/redux/api/driverSlice";
 
 export default function DriversPage() {
   const drivers = useSelector((state) => state.drivers);
@@ -22,17 +26,71 @@ export default function DriversPage() {
 
   const [driverPhone, setDriverPhone] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [driverName, setDriverName] = useState("");
+  const [drivingLicense, setDriverDrivingLicense] = useState("");
+  const [joiningDate, setJoiningDate] = useState("");
+  const [isInvited, setIsInvited] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
 
-  const handleInvite = (e) => {
+  const [addDriverMut, { isLoading: isInviting } ] = useAddDriverMutation();
+  const [verifyInvitation, { isLoading: isVerifying } ] = useVerifyDriverInvitationMutation();
+
+  const handleInvite = async (e) => {
     e.preventDefault();
-    alert("Invitation sent to the driver!");
-    setDriverPhone("");
-    setShowForm(false);
+    if (!driverPhone.trim()) {
+      alert("Please enter driver's phone number");
+      return;
+    }
+    try {
+      await addDriverMut({
+        phoneNumber: driverPhone,
+        name: driverName,
+        drivingLicense,
+        joinedAt: joiningDate || undefined,
+      }).unwrap();
+      alert("Invitation sent to the driver!");
+      setIsInvited(true);
+    } catch (err) {
+      alert(err?.data?.message || "Failed to send invitation");
+    }
+  };
+
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    if (!otpCode.trim()) {
+      alert("Please enter the OTP/Invitation code.");
+      return;
+    }
+    try {
+      await verifyInvitation({
+        phoneNumber: driverPhone,
+        otp: otpCode,
+        firstName: driverName,
+        lastName: "",
+        drivingLicense,
+      }).unwrap();
+      alert("Invitation verified and driver created!");
+      // Reset form after verification
+      setDriverPhone("");
+      setDriverName("");
+      setDriverDrivingLicense("");
+      setJoiningDate("");
+      setOtpCode("");
+      setIsInvited(false);
+      setShowForm(false);
+    } catch (err) {
+      alert(err?.data?.message || "Verification failed");
+    }
   };
 
   const handleCancel = () => {
     setShowForm(false);
     setDriverPhone("");
+    setDriverName("");
+    setDriverDrivingLicense("");
+    setJoiningDate("");
+    setOtpCode("");
+    setIsInvited(false);
   };
 
   return (
@@ -72,6 +130,7 @@ export default function DriversPage() {
             Add Drivers
           </button>
         </div>
+        
 
         {/* Drivers List */}
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 py-6 max-w-5xl mx-auto w-full animate-fadeInUp">
@@ -143,22 +202,117 @@ export default function DriversPage() {
                     autoComplete="tel"
                     placeholder="Enter driver's phone number"
                     className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                    disabled={isInvited || isInviting || isVerifying}
                   />
                 </div>
+                 <div>
+                  <label
+                    htmlFor="driverName"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Name
+                  </label>
+                  <input
+                    id="driverName"
+                    name="driverName"
+                    type="text"
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                    autoComplete="name"
+                    placeholder="Enter driver's name"
+                    className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                    disabled={isInvited || isInviting || isVerifying}
+                  />
+                </div>
+                {/* drivingLicense */}
+                 <div>
+                  <label
+                    htmlFor="drivingLicense"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Driving License
+                  </label>
+                  <input
+                    id="drivingLicense"
+                    name="drivingLicense"
+                    type="text"
+                    value={drivingLicense}
+                    onChange={(e) => setDriverDrivingLicense(e.target.value)}
+                    autoComplete="off"
+                    placeholder="Enter driver's license number"
+                    className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                    disabled={isInvited || isInviting || isVerifying}
+                  />
+                </div>
+                   {/* Joining Date */}
+                 <div>
+                  <label
+                    htmlFor="joiningDate"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Joining Date
+                  </label>
+                  <input
+                    id="joiningDate"
+                    name="joiningDate"
+                    type="date"
+                    value={joiningDate}
+                    onChange={(e) => setJoiningDate(e.target.value)}
+                    autoComplete="off"
+                    placeholder="Select joining date"
+                    className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                    disabled={isInvited || isInviting || isVerifying}
+                  />
+                </div>
+
+                {isInvited && (
+                  <div>
+                    <label
+                      htmlFor="otpCode"
+                      className="block mb-2 text-sm font-medium text-gray-700"
+                    >
+                      OTP / Invitation Code
+                    </label>
+                    <input
+                      id="otpCode"
+                      name="otpCode"
+                      type="text"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      autoComplete="one-time-code"
+                      placeholder="Enter the OTP/invitation code"
+                      className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                      disabled={isVerifying}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3">
-                <button
-                  type="submit"
-                  className="bg-[#004aad] text-white px-4 py-2 rounded-sm text-xs font-base hover:bg-[#0056b3] transition cursor-pointer duration-200 ease-in-out"
-                >
-                  Send Invitation
-                </button>
+                {!isInvited ? (
+                  <button
+                    type="submit"
+                    className="bg-[#004aad] text-white px-4 py-2 rounded-sm text-xs font-base hover:bg-[#0056b3] transition cursor-pointer duration-200 ease-in-out"
+                    disabled={isInviting}
+                  >
+                    {isInviting ? "Sending..." : "Send Invitation Code"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleVerify}
+                    className="bg-[#28a745] text-white px-4 py-2 rounded-sm text-xs font-base hover:bg-[#23923d] transition cursor-pointer duration-200 ease-in-out"
+                    disabled={isVerifying}
+                  >
+                    {isVerifying ? "Verifying..." : "Verify Code"}
+                  </button>
+                )}
 
                 <button
                   type="button"
                   onClick={handleCancel}
                   className="bg-white text-gray-600 text-xs font-base border border-gray-300 rounded-md px-3 py-2 hover:bg-[#f5f7fa] transition duration-200 cursor-pointer"
+                  disabled={isInviting || isVerifying}
                 >
                   Cancel
                 </button>
