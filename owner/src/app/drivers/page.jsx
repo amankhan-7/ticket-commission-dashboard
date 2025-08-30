@@ -40,7 +40,6 @@ export default function DriversPage() {
   const [isInvited, setIsInvited] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
-<<<<<<< HEAD
   const [addDriverMut, { isLoading: isInviting } ] = useAddDriverMutation();
   const [verifyInvitation, { isLoading: isVerifying } ] = useVerifyDriverInvitationMutation();
 
@@ -89,36 +88,6 @@ export default function DriversPage() {
       setShowForm(false);
     } catch (err) {
       alert(err?.data?.message || "Verification failed");
-=======
-  const user = useSelector(selectCurrentUser);
-  const ownerId = user?._id;
-  const initials =
-    user?.firstName && user?.lastName
-      ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
-      : "SB";
-
-  const {
-    data: driversList = [],
-    isLoading,
-    isError,
-  } = useGetDriversQuery();
-  const [addDriver, { isLoading: isAdding }] = useAddDriverMutation();
-  const [removeDriver, { isLoading: isRemoving }] = useRemoveDriverMutation();
-
-  const sortedDrivers = [...driversList].sort(
-    (a, b) => (b.status === "Active") - (a.status === "Active")
-  );
-
-  const handleInvite = async (e) => {
-    e.preventDefault();
-    try {
-      await addDriver({ phoneNumber: driverPhone }).unwrap();
-      console.log("Driver invitation sent successfully!");
-      alert("Driver invitation sent successfully!");
-      setDriverPhone(""); // Clear input after success
-    } catch (err) {
-      console.error("Failed to send driver invitation:", err);
->>>>>>> origin/amanFrontend
     }
   };
 
