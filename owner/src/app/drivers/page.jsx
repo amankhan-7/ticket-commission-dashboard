@@ -12,22 +12,19 @@ import {
 } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import {
-<<<<<<< HEAD
   addDriver,
   deleteDriver,
 } from "@/utils/redux/slices/driversSlice";
+import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
 import {
   useAddDriverMutation,
   useVerifyDriverInvitationMutation,
-} from "@/utils/redux/api/driverSlice";
-=======
   useGetDriversQuery,
-  useAddDriverMutation,
   useRemoveDriverMutation,
 } from "@/utils/redux/api/driverSlice";
-import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
-import { useRouter } from "next/navigation";
->>>>>>> origin/amanFrontend
+import { useRouter } from 'next/navigation';
+
+
 
 export default function DriversPage() {
   const router = useRouter();
@@ -42,6 +39,16 @@ export default function DriversPage() {
 
   const [addDriverMut, { isLoading: isInviting } ] = useAddDriverMutation();
   const [verifyInvitation, { isLoading: isVerifying } ] = useVerifyDriverInvitationMutation();
+    const {
+    data: driversList = [],
+    isLoading,
+    isError,
+  } = useGetDriversQuery();
+  const [removeDriver, { isLoading: isRemoving }] = useRemoveDriverMutation();
+
+  const sortedDrivers = [...driversList].sort(
+    (a, b) => (b.status === "Active") - (a.status === "Active")
+  );
 
   const handleInvite = async (e) => {
     e.preventDefault();
@@ -114,6 +121,12 @@ export default function DriversPage() {
       console.error("Failed to remove driver:", error);
     }
   };
+   const user = useSelector(selectCurrentUser);
+   const profilePic = useSelector((state) => state.profile.profilePic);
+   const initials =
+     user?.firstName && user?.lastName
+       ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
+       : "SB";
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
