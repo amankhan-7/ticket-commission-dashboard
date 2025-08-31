@@ -24,11 +24,10 @@ const busSlice = apiSlice.injectEndpoints({
       query: ({
         busNumber,
         busName,
-        routeFrom,
-        routeTo,
-        departureTime,
-        ticketPrice,
+        baseRouteFrom,
+        baseRouteTo,
         totalSeats,
+        seatingCapacity,
         basePrice,
         busType,
         amenities,
@@ -37,16 +36,15 @@ const busSlice = apiSlice.injectEndpoints({
         permitExpiry,
         yearOfManufacture,
       }) => ({
-        url: "/routes",
+        url: "/buses",
         method: "POST",
         body: {
           busNumber,
           busName,
-          routeFrom,
-          routeTo,
-          departureTime,
-          price: Number(ticketPrice),
+          baseRouteFrom,
+          baseRouteTo,
           totalSeats: Number(totalSeats),
+          seatingCapacity: Number(seatingCapacity),
           basePrice: basePrice ? Number(basePrice) : null,
           busType,
           amenities,
@@ -56,10 +54,10 @@ const busSlice = apiSlice.injectEndpoints({
           yearOfManufacture: yearOfManufacture
             ? Number(yearOfManufacture)
             : null,
-          userType: "busOwner",
+          userType: "busOwner",   
         },
       }),
-      invalidatesTags: ["Route", "TodayTrips", "RouteStats"],
+      invalidatesTags: ["Bus", "TodayTrips", "BusStats"],
       transformResponse: (res) => res.data,
     }),
 
@@ -96,6 +94,7 @@ const busSlice = apiSlice.injectEndpoints({
           frequency,
           daysOfWeek,
           endDate,
+          userType: "busOwner", 
         },
       }),
       invalidatesTags: ["Route", "TodayTrips", "RouteStats"],
@@ -112,7 +111,7 @@ const busSlice = apiSlice.injectEndpoints({
         if (status) params.append("status", status);
 
         return {
-          url: `/routes?${params.toString()}`,
+          url: `/buses?${params.toString()}`,
           method: "GET",
         };
       },

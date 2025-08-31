@@ -25,7 +25,10 @@ export const driverApiSlice = apiSlice.injectEndpoints({
       query: ({ ownerId, name, phoneNumber, drivingLicense, joinedAt }) => ({
         url: `/drivers`,
         method: "POST",
-        body: { name, phoneNumber, drivingLicense, joinedAt },
+           headers: {
+          UserType: "busOwner",
+        },
+        body: { name, phoneNumber, drivingLicense, joinedAt, UserType: "busOwner", },
       }),
       invalidatesTags: [{ type: "Driver", id: "LIST" }],
       transformResponse: (res) => res.data,

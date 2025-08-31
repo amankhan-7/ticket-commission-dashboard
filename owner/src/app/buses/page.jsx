@@ -190,75 +190,108 @@ export default function BusesPage() {
 
   const [isBulkCreating, setIsBulkCreating] = useState(false);
 
-  const handleSubmit = async (e) => {
-    console.log("handleSubmit triggered", busData);
-    e.preventDefault();
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (
-      !busData.busName ||
-      !busData.busNumber ||
-      !busData.routeFrom ||
-      !busData.routeTo ||
-      !busData.departureTime ||
-      !busData.basePrice ||
-      !busData.totalSeats ||
-      !busData.ticketPrice
-    ) {
-      toast.error("Please fill all required fields");
+  const payload = {
+    busName: busData.busName,
+    busNumber: busData.busNumber,
+    baseRouteFrom: busData.baseRouteFrom,
+    baseRouteTo: busData.baseRouteTo,
+    totalSeats: busData.totalSeats ? Number(busData.totalSeats) : null,
+    seatingCapacity: busData.seatingCapacity
+      ? Number(busData.seatingCapacity)
+      : null,
+    basePrice: busData.basePrice ? Number(busData.basePrice) : null,
+    busType: busData.busType,
+    amenities: busData.amenities
+      ? busData.amenities.split(",").map((a) => a.trim())
+      : [],
+    registrationNumber: busData.registrationNumber,
+    insuranceExpiry: busData.insuranceExpiry || null,
+    permitExpiry: busData.permitExpiry || null,
+    yearOfManufacture: busData.yearOfManufacture
+      ? Number(busData.yearOfManufacture)
+      : null,
+  };
+
+  console.log("Payload ready to send:", payload);
+
+  const requiredFields = [
+    "busName",
+    "busNumber",
+    "baseRouteFrom",
+    "baseRouteTo",
+    "totalSeats",
+    "seatingCapacity",
+    "basePrice",
+    "registrationNumber",
+  ];
+
+  for (let field of requiredFields) {
+    if (!payload[field]) {
+      toast.error(`Please fill ${field}`);
       return;
     }
+  }
 
-    const payload = {
-      ...busData,
-      ticketPrice: Number(busData.ticketPrice),
-      totalSeats: Number(busData.totalSeats),
-      basePrice: busData.basePrice ? Number(busData.basePrice) : null,
-      amenities: busData.amenities
-        ? busData.amenities.split(",").map((a) => a.trim())
-        : [],
-      yearOfManufacture: busData.yearOfManufacture
-        ? Number(busData.yearOfManufacture)
-        : null,
-    };
+  try {
+    let result;
 
-    try {
-      if (editMode && selectedBusId) {
-        await updateBus({ routeId: selectedBusId, ...payload }).unwrap();
-        toast.success("Bus updated successfully");
-      } else {
-        await addBus(payload).unwrap();
-        toast.success("Bus route added successfully");
-        refetch();
-      }
-
-      // reset state
-      setBusData({
-        busName: "",
-        busNumber: "",
-        routeFrom: "",
-        routeTo: "",
-        date: "",
-        departureTime: "",
-        arrivalTime: "",
-        totalSeats: "",
-        ticketPrice: "",
-        basePrice: "",
-        busType: "",
-        amenities: "",
-        registrationNumber: "",
-        insuranceExpiry: "",
-        permitExpiry: "",
-        yearOfManufacture: "",
-      });
-
-      setEditMode(false);
-      setSelectedBusId(null);
-      setShowForm(false);
-    } catch (error) {
-      console.error("Submit failed:", error);
-      toast.error("Something went wrong");
+    if (editMode && selectedBusId) {
+      // Update bus
+      result = await updateBus({ routeId: selectedBusId, ...payload });
+    } else {
+      // Add new bus
+      result = await addBus(payload);
     }
-  };
+
+    console.log("API raw result:", result);
+
+    // Unwrap to throw if error
+    await result.unwrap?.();
+
+    // Success feedback
+    toast.success(editMode ? "Bus updated successfully" : "Bus added successfully");
+    if (!editMode) refetch();
+
+    // Reset form
+    setBusData({
+      busName: "",
+      busNumber: "",
+      baseRouteFrom: "",
+      baseRouteTo: "",
+      totalSeats: "",
+      seatingCapacity: "",
+      basePrice: "",
+      busType: "",
+      amenities: "",
+      registrationNumber: "",
+      insuranceExpiry: "",
+      permitExpiry: "",
+      yearOfManufacture: "",
+    });
+
+    setEditMode(false);
+    setSelectedBusId(null);
+    setShowForm(false);
+
+  } catch (error) {
+    console.error("Submit failed:", error);
+
+    // Detailed RTK Query error info
+    if (error?.data) {
+      console.error("Server response:", error.data);
+      toast.error(error.data.message || "Server returned an error");
+    } else if (error?.status) {
+      console.error("Status code:", error.status);
+      toast.error(`Request failed with status ${error.status}`);
+    } else {
+      toast.error("Something went wrong. Please try again.");
+    }
+  }
+};
+
 
   const handleBulkSubmit = async (e) => {
     e.preventDefault();
@@ -435,8 +468,8 @@ export default function BusesPage() {
                             setBusData({
                               busNumber: bus.busNumber || "",
                               busName: bus.busName || "",
-                              routeFrom: bus.routeFrom || "",
-                              routeTo: bus.routeTo || "",
+                              routeFrom: bus.baseRouteFrom || "",
+                              routeTo: bus.baseRouteTo || "",
                               date: bus.date || "",
                               departureTime: bus.departureTime || "",
                               arrivalTime: bus.arrivalTime || "",
@@ -463,7 +496,7 @@ export default function BusesPage() {
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FaRoute className="text-[#004aad]" />
                         <span>
-                          {bus.routeFrom} → {bus.routeTo}
+                          {bus.baseRouteFrom} → {bus.baseRouteTo}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -539,7 +572,7 @@ export default function BusesPage() {
         {showForm && (
           <section className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
             <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
-              Add New Bus
+              {editMode ? "Update Bus" : "Add New Bus"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -584,15 +617,15 @@ export default function BusesPage() {
               {/* Route From */}
               <div>
                 <label
-                  htmlFor="from"
+                  htmlFor="baseRouteFrom"
                   className="block mb-2 text-sm font-medium text-gray-700"
                 >
                   Route From
                 </label>
                 <input
-                  id="routeFrom"
-                  name="routeFrom"
-                  value={busData.routeFrom || ""}
+                  id="baseRouteFrom"
+                  name="baseRouteFrom"
+                  value={busData.baseRouteFrom || ""}
                   onChange={handleChange}
                   placeholder="Enter starting location"
                   type="text"
@@ -603,36 +636,18 @@ export default function BusesPage() {
               {/* Route To */}
               <div>
                 <label
-                  htmlFor="to"
+                  htmlFor="baseRouteTo"
                   className="block mb-2 text-sm font-medium text-gray-700"
                 >
                   Route To
                 </label>
                 <input
-                  id="routeTo"
-                  name="routeTo"
-                  value={busData.routeTo || ""}
+                  id="baseRouteTo"
+                  name="baseRouteTo"
+                  value={busData.baseRouteTo || ""}
                   onChange={handleChange}
                   placeholder="Enter destination location"
                   type="text"
-                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
-              </div>
-
-              {/* Departure Time */}
-              <div>
-                <label
-                  htmlFor="departureTime"
-                  className="block mb-2 text-sm font-medium text-gray-700"
-                >
-                  Departure Time
-                </label>
-                <input
-                  id="departureTime"
-                  name="departureTime"
-                  value={busData.departureTime || ""}
-                  onChange={handleChange}
-                  type="time"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
                 />
               </div>
@@ -651,26 +666,26 @@ export default function BusesPage() {
                   value={busData.totalSeats || ""}
                   onChange={handleChange}
                   type="number"
-                  placeholder="e.g., 17"
+                  placeholder="e.g., 40"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
                 />
               </div>
 
-              {/* Ticket Price */}
+              {/* Seating Capacity */}
               <div>
                 <label
-                  htmlFor="ticketPrice"
+                  htmlFor="seatingCapacity"
                   className="block mb-2 text-sm font-medium text-gray-700"
                 >
-                  Ticket Price
+                  Seating Capacity
                 </label>
                 <input
-                  id="ticketPrice"
-                  name="ticketPrice"
-                  value={busData.ticketPrice || ""}
+                  id="seatingCapacity"
+                  name="seatingCapacity"
+                  value={busData.seatingCapacity || ""}
                   onChange={handleChange}
                   type="number"
-                  placeholder="Enter ticket price"
+                  placeholder="e.g., 40"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
                 />
               </div>
@@ -722,8 +737,8 @@ export default function BusesPage() {
                   htmlFor="amenities"
                   className="block mb-2 text-sm font-medium text-gray-700"
                 >
-                  Amenities (comma separated,('WiFi', 'USB Charging', 'Water
-                  Bottle', 'Snacks', 'Blanket', 'Pillow'))
+                  Amenities (comma separated, e.g., WiFi, USB Charging, Water
+                  Bottle)
                 </label>
                 <input
                   id="amenities"
@@ -807,7 +822,7 @@ export default function BusesPage() {
                   max={new Date().getFullYear()}
                   value={busData.yearOfManufacture || ""}
                   onChange={handleChange}
-                  placeholder="e.g., 2025"
+                  placeholder="e.g., 2022"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
                 />
               </div>
