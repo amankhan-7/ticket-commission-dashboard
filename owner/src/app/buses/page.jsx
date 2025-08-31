@@ -1,6 +1,6 @@
 "use client";
 
-import BottomNav from "@/components/UI/BottomNav";
+import BottomNav from "@/components/ui/BottomNav";
 import {
   FaEdit,
   FaTrash,
@@ -119,7 +119,6 @@ export default function BusesPage() {
     departureTime: "",
     numberOfSeats: "",
     ticketPrice: "",
-    busNumber: "",
     baseRouteFrom: "",
     baseRouteTo: "",
     basePrice: "",
@@ -192,16 +191,18 @@ export default function BusesPage() {
   const [isBulkCreating, setIsBulkCreating] = useState(false);
 
   const handleSubmit = async (e) => {
+    console.log("handleSubmit triggered", busData);
     e.preventDefault();
+
     if (
+      !busData.busName ||
       !busData.busNumber ||
       !busData.routeFrom ||
       !busData.routeTo ||
-      !busData.price ||
-      !busData.busName ||
-      !busData.date ||
-      !busData.arrivalTime ||
-      !busData.departureTime
+      !busData.departureTime ||
+      !busData.basePrice ||
+      !busData.totalSeats ||
+      !busData.ticketPrice
     ) {
       toast.error("Please fill all required fields");
       return;
@@ -209,16 +210,15 @@ export default function BusesPage() {
 
     const payload = {
       ...busData,
-      price: Number(busData.price),
+      ticketPrice: Number(busData.ticketPrice),
       totalSeats: Number(busData.totalSeats),
-      routeStops: busData.routeStops.map((stop, index) => {
-        const stopData = { stopOrder: (index + 1).toString() };
-        if (stop.stopName) stopData.stopName = stop.stopName;
-        if (stop.arrivalTime) stopData.arrivalTime = stop.arrivalTime;
-        if (stop.departureTime) stopData.departureTime = stop.departureTime;
-        if (stop.distanceKm) stopData.distanceKm = Number(stop.distanceKm);
-        return stopData;
-      }),
+      basePrice: busData.basePrice ? Number(busData.basePrice) : null,
+      amenities: busData.amenities
+        ? busData.amenities.split(",").map((a) => a.trim())
+        : [],
+      yearOfManufacture: busData.yearOfManufacture
+        ? Number(busData.yearOfManufacture)
+        : null,
     };
 
     try {
@@ -231,17 +231,24 @@ export default function BusesPage() {
         refetch();
       }
 
+      // reset state
       setBusData({
-        busNumber: "",
         busName: "",
+        busNumber: "",
         routeFrom: "",
         routeTo: "",
         date: "",
         departureTime: "",
         arrivalTime: "",
-        price: "",
         totalSeats: "",
-        routeStops: [],
+        ticketPrice: "",
+        basePrice: "",
+        busType: "",
+        amenities: "",
+        registrationNumber: "",
+        insuranceExpiry: "",
+        permitExpiry: "",
+        yearOfManufacture: "",
       });
 
       setEditMode(false);
@@ -389,10 +396,6 @@ export default function BusesPage() {
               Add Buses
             </button>
           </div>
-          <form
-            onSubmit={handleSubmit}
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
-          ></form>
         </div>
 
         {/* Bus Cards Grid */}
@@ -500,10 +503,10 @@ export default function BusesPage() {
                         {driverList.map((driver) => (
                           <option
                             disabled={
-                              driver.assignedTo && driver.assignedTo !== bus._id
+                              driver.assignedTo && driver.assignedTo !== bus.id
                             }
-                            key={driver._id}
-                            value={driver._id}
+                            key={driver.id}
+                            value={driver.id}
                             className="font-semibold"
                           >
                             {driver.driverName}
@@ -551,7 +554,7 @@ export default function BusesPage() {
                 <input
                   id="busName"
                   name="busName"
-                  value={busData.busName}
+                  value={busData.busName || ""}
                   onChange={handleChange}
                   placeholder="Enter bus name"
                   type="text"
@@ -587,9 +590,9 @@ export default function BusesPage() {
                   Route From
                 </label>
                 <input
-                  id="from"
-                  name="from"
-                  value={busData.from}
+                  id="routeFrom"
+                  name="routeFrom"
+                  value={busData.routeFrom || ""}
                   onChange={handleChange}
                   placeholder="Enter starting location"
                   type="text"
@@ -606,9 +609,9 @@ export default function BusesPage() {
                   Route To
                 </label>
                 <input
-                  id="to"
-                  name="to"
-                  value={busData.to}
+                  id="routeTo"
+                  name="routeTo"
+                  value={busData.routeTo || ""}
                   onChange={handleChange}
                   placeholder="Enter destination location"
                   type="text"
@@ -627,7 +630,7 @@ export default function BusesPage() {
                 <input
                   id="departureTime"
                   name="departureTime"
-                  value={busData.departureTime}
+                  value={busData.departureTime || ""}
                   onChange={handleChange}
                   type="time"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
@@ -645,7 +648,7 @@ export default function BusesPage() {
                 <input
                   id="totalSeats"
                   name="totalSeats"
-                  value={busData.totalSeats}
+                  value={busData.totalSeats || ""}
                   onChange={handleChange}
                   type="number"
                   placeholder="e.g., 17"
@@ -664,7 +667,7 @@ export default function BusesPage() {
                 <input
                   id="ticketPrice"
                   name="ticketPrice"
-                  value={busData.ticketPrice}
+                  value={busData.ticketPrice || ""}
                   onChange={handleChange}
                   type="number"
                   placeholder="Enter ticket price"
@@ -726,12 +729,7 @@ export default function BusesPage() {
                   id="amenities"
                   name="amenities"
                   value={busData.amenities || ""}
-                  onChange={(e) =>
-                    setBusData({
-                      ...busData,
-                      amenities: e.target.value.split(","),
-                    })
-                  }
+                  onChange={handleChange}
                   placeholder="e.g., USB Charging, WiFi"
                   type="text"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
@@ -804,7 +802,9 @@ export default function BusesPage() {
                 <input
                   id="yearOfManufacture"
                   name="yearOfManufacture"
-                  type="date"
+                  type="number"
+                  min="1990"
+                  max={new Date().getFullYear()}
                   value={busData.yearOfManufacture || ""}
                   onChange={handleChange}
                   placeholder="e.g., 2025"
@@ -823,7 +823,7 @@ export default function BusesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition"
+                  className="px-6 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition cursor-pointer"
                 >
                   {editMode ? "Update Bus" : "Add Bus"}
                 </button>
