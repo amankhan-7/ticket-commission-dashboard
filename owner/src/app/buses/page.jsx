@@ -10,8 +10,10 @@ import {
   FaPlus,
   FaExchangeAlt,
   FaRupeeSign,
-  FaTicketAlt,
+  FaBus,
+  FaIdCard,
 } from "react-icons/fa";
+import { Wifi, Usb, FileText, ClipboardCheck, Calendar } from "lucide-react";
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
@@ -190,108 +192,108 @@ export default function BusesPage() {
 
   const [isBulkCreating, setIsBulkCreating] = useState(false);
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  const payload = {
-    busName: busData.busName,
-    busNumber: busData.busNumber,
-    baseRouteFrom: busData.baseRouteFrom,
-    baseRouteTo: busData.baseRouteTo,
-    totalSeats: busData.totalSeats ? Number(busData.totalSeats) : null,
-    seatingCapacity: busData.seatingCapacity
-      ? Number(busData.seatingCapacity)
-      : null,
-    basePrice: busData.basePrice ? Number(busData.basePrice) : null,
-    busType: busData.busType,
-    amenities: busData.amenities
-      ? busData.amenities.split(",").map((a) => a.trim())
-      : [],
-    registrationNumber: busData.registrationNumber,
-    insuranceExpiry: busData.insuranceExpiry || null,
-    permitExpiry: busData.permitExpiry || null,
-    yearOfManufacture: busData.yearOfManufacture
-      ? Number(busData.yearOfManufacture)
-      : null,
+    const payload = {
+      busName: busData.busName,
+      busNumber: busData.busNumber,
+      baseRouteFrom: busData.baseRouteFrom,
+      baseRouteTo: busData.baseRouteTo,
+      totalSeats: busData.totalSeats ? Number(busData.totalSeats) : null,
+      seatingCapacity: busData.seatingCapacity
+        ? Number(busData.seatingCapacity)
+        : null,
+      basePrice: busData.basePrice ? Number(busData.basePrice) : null,
+      busType: busData.busType,
+      amenities: busData.amenities
+        ? busData.amenities.split(",").map((a) => a.trim())
+        : [],
+      registrationNumber: busData.registrationNumber,
+      insuranceExpiry: busData.insuranceExpiry || null,
+      permitExpiry: busData.permitExpiry || null,
+      yearOfManufacture: busData.yearOfManufacture
+        ? Number(busData.yearOfManufacture)
+        : null,
+    };
+
+    console.log("Payload ready to send:", payload);
+
+    const requiredFields = [
+      "busName",
+      "busNumber",
+      "baseRouteFrom",
+      "baseRouteTo",
+      "totalSeats",
+      "seatingCapacity",
+      "basePrice",
+      "registrationNumber",
+    ];
+
+    for (let field of requiredFields) {
+      if (!payload[field]) {
+        toast.error(`Please fill ${field}`);
+        return;
+      }
+    }
+
+    try {
+      let result;
+
+      if (editMode && selectedBusId) {
+        // Update bus
+        result = await updateBus({ routeId: selectedBusId, ...payload });
+      } else {
+        // Add new bus
+        result = await addBus(payload);
+      }
+
+      console.log("API raw result:", result);
+
+      // Unwrap to throw if error
+      await result.unwrap?.();
+
+      // Success feedback
+      toast.success(
+        editMode ? "Bus updated successfully" : "Bus added successfully"
+      );
+      if (!editMode) refetch();
+
+      // Reset form
+      setBusData({
+        busName: "",
+        busNumber: "",
+        baseRouteFrom: "",
+        baseRouteTo: "",
+        totalSeats: "",
+        seatingCapacity: "",
+        basePrice: "",
+        busType: "",
+        amenities: "",
+        registrationNumber: "",
+        insuranceExpiry: "",
+        permitExpiry: "",
+        yearOfManufacture: "",
+      });
+
+      setEditMode(false);
+      setSelectedBusId(null);
+      setShowForm(false);
+    } catch (error) {
+      console.error("Submit failed:", error);
+
+      // Detailed RTK Query error info
+      if (error?.data) {
+        console.error("Server response:", error.data);
+        toast.error(error.data.message || "Server returned an error");
+      } else if (error?.status) {
+        console.error("Status code:", error.status);
+        toast.error(`Request failed with status ${error.status}`);
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
+    }
   };
-
-  console.log("Payload ready to send:", payload);
-
-  const requiredFields = [
-    "busName",
-    "busNumber",
-    "baseRouteFrom",
-    "baseRouteTo",
-    "totalSeats",
-    "seatingCapacity",
-    "basePrice",
-    "registrationNumber",
-  ];
-
-  for (let field of requiredFields) {
-    if (!payload[field]) {
-      toast.error(`Please fill ${field}`);
-      return;
-    }
-  }
-
-  try {
-    let result;
-
-    if (editMode && selectedBusId) {
-      // Update bus
-      result = await updateBus({ routeId: selectedBusId, ...payload });
-    } else {
-      // Add new bus
-      result = await addBus(payload);
-    }
-
-    console.log("API raw result:", result);
-
-    // Unwrap to throw if error
-    await result.unwrap?.();
-
-    // Success feedback
-    toast.success(editMode ? "Bus updated successfully" : "Bus added successfully");
-    if (!editMode) refetch();
-
-    // Reset form
-    setBusData({
-      busName: "",
-      busNumber: "",
-      baseRouteFrom: "",
-      baseRouteTo: "",
-      totalSeats: "",
-      seatingCapacity: "",
-      basePrice: "",
-      busType: "",
-      amenities: "",
-      registrationNumber: "",
-      insuranceExpiry: "",
-      permitExpiry: "",
-      yearOfManufacture: "",
-    });
-
-    setEditMode(false);
-    setSelectedBusId(null);
-    setShowForm(false);
-
-  } catch (error) {
-    console.error("Submit failed:", error);
-
-    // Detailed RTK Query error info
-    if (error?.data) {
-      console.error("Server response:", error.data);
-      toast.error(error.data.message || "Server returned an error");
-    } else if (error?.status) {
-      console.error("Status code:", error.status);
-      toast.error(`Request failed with status ${error.status}`);
-    } else {
-      toast.error("Something went wrong. Please try again.");
-    }
-  }
-};
-
 
   const handleBulkSubmit = async (e) => {
     e.preventDefault();
@@ -509,13 +511,48 @@ export default function BusesPage() {
                         <FaChair className="text-[#004aad]" />
                         <span>{bus.totalSeats}</span>
                       </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                      {/* <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FaTicketAlt className="text-[#004aad]" />
                         <span>{bus.seatsBooked}</span>
-                      </div>
+                      </div> */}
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FaRupeeSign className="text-[#004aad]" />
-                        <span>{bus.price}</span>
+                        <span>{bus.basePrice}</span>
+                      </div>
+                      {/* Bus Type */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaBus className="text-[#004aad]" />
+                        <span>{bus.busType}</span>
+                      </div>
+
+                      {/* Amenities */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Wifi className="text-[#004aad]" size={16} />
+                        <span>{bus.amenities?.join(", ")}</span>
+                      </div>
+
+                      {/* Registration Number */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FaIdCard className="text-[#004aad]" />
+                        <span>{bus.registrationNumber}</span>
+                      </div>
+
+                      {/* Insurance Expiry */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <FileText className="text-[#004aad]" size={16} />
+                        <span>{bus.insuranceExpiry}</span>
+                      </div>
+
+                      {/* Permit Expiry */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <ClipboardCheck className="text-[#004aad]" size={16} />
+                        <span>{bus.permitExpiry}</span>
+                      </div>
+
+                      {/* Year of Manufacture */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Calendar className="text-[#004aad]" size={16} />
+                        <span>{bus.yearOfManufacture}</span>
                       </div>
                     </div>
 
