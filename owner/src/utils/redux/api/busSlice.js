@@ -54,7 +54,7 @@ const busSlice = apiSlice.injectEndpoints({
           yearOfManufacture: yearOfManufacture
             ? Number(yearOfManufacture)
             : null,
-          userType: "busOwner",   
+          userType: "busOwner",
         },
       }),
       invalidatesTags: ["Bus", "TodayTrips", "BusStats"],
@@ -64,37 +64,36 @@ const busSlice = apiSlice.injectEndpoints({
     // Bulk add buses for all 6  months
     bulkAddBus: builder.mutation({
       query: ({
-        busNumber,
-        busName,
+        busId,
+        startDate,
+        endDate,
         routeFrom,
         routeTo,
-        startDate,
         departureTime,
         arrivalTime,
-        price,
-        totalSeats,
+        basePrice,
         routeStops = [],
         frequency = "daily",
-        daysOfWeek = [],
-        endDate,
+        notes = "",
+        restrictions = [],
+        tags = [],
       }) => ({
-        url: "/routes/bulk",
+        url: "/buses/routes/bulk",
         method: "POST",
         body: {
-          busNumber,
-          busName,
+          busId,
+          startDate,
+          endDate,
           routeFrom,
           routeTo,
-          startDate,
           departureTime,
           arrivalTime,
-          price,
-          totalSeats,
+          basePrice: Number(basePrice),
           routeStops,
           frequency,
-          daysOfWeek,
-          endDate,
-          userType: "busOwner", 
+          notes,
+          restrictions,
+          tags,
         },
       }),
       invalidatesTags: ["Route", "TodayTrips", "RouteStats"],
@@ -102,11 +101,9 @@ const busSlice = apiSlice.injectEndpoints({
     }),
 
     getAllBuses: builder.query({
-      query: ({ page = 1, limit = 10, date, status } = {}) => {
-        const params = new URLSearchParams({
-          page: page.toString(),
-          limit: limit.toString(),
-        });
+      query: ({ date, status } = {}) => {
+        const params = new URLSearchParams();
+
         if (date) params.append("date", date);
         if (status) params.append("status", status);
 
@@ -140,7 +137,7 @@ const busSlice = apiSlice.injectEndpoints({
     // Update route
     updateBus: builder.mutation({
       query: ({ routeId, ...updateData }) => ({
-        url: `/routes/${routeId}`,
+        url: `/buses/${routeId}`,
         method: "PUT",
         body: updateData,
       }),

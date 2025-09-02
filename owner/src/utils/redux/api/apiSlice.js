@@ -8,7 +8,7 @@ const baseQuery = fetchBaseQuery({
   credentials: "include",
   prepareHeaders: (headers, { getState }) => {
     headers.set("Content-Type", "application/json");
-    headers.set("User-Type", "busOwner"); 
+    // headers.set("User-Type", "busOwner"); 
     return headers;
   },
 });

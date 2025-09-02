@@ -11,10 +11,6 @@ import {
   FaCircle,
 } from "react-icons/fa";
 import { useSelector } from "react-redux";
-import {
-  addDriver,
-  deleteDriver,
-} from "@/utils/redux/slices/driversSlice";
 import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
 import {
   useAddDriverMutation,
@@ -31,7 +27,8 @@ export default function DriversPage() {
 
   const [driverPhone, setDriverPhone] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [driverName, setDriverName] = useState("");
+  const [driverFirstName, setDriverFirstName] = useState("");
+   const [driverLastName, setDriverLastName] = useState("");
   const [drivingLicense, setDriverDrivingLicense] = useState("");
   const [joiningDate, setJoiningDate] = useState("");
   const [isInvited, setIsInvited] = useState(false);
@@ -59,7 +56,8 @@ export default function DriversPage() {
     try {
       await addDriverMut({
         phoneNumber: driverPhone,
-        name: driverName,
+        firstName: driverFirstName,
+        lastName: driverLastName,
         drivingLicense,
         joinedAt: joiningDate || undefined,
       }).unwrap();
@@ -80,14 +78,15 @@ export default function DriversPage() {
       await verifyInvitation({
         phoneNumber: driverPhone,
         otp: otpCode,
-        firstName: driverName,
-        lastName: "",
+        firstName: driverFirstName,
+        lastName: driverLastName || "",
         drivingLicense,
       }).unwrap();
       alert("Invitation verified and driver created!");
       // Reset form after verification
       setDriverPhone("");
-      setDriverName("");
+      setDriverFirstName("");
+      setDriverLastName("");
       setDriverDrivingLicense("");
       setJoiningDate("");
       setOtpCode("");
@@ -101,7 +100,8 @@ export default function DriversPage() {
   const handleCancel = () => {
     setShowForm(false);
     setDriverPhone("");
-    setDriverName("");
+    setDriverFirstName("");
+    setDriverLastName("");
     setDriverDrivingLicense("");
     setJoiningDate("");
     setOtpCode("");
@@ -228,7 +228,7 @@ export default function DriversPage() {
 
                   <div
                     className={`flex items-center gap-2 p-2 font-medium ${
-                      driver.status === "Active"
+                      driver.status === "Assigned"
                         ? "text-[#28a745] bg-[#e6f9ee]"
                         : "text-[#dc3545] bg-[#fdecea]"
                     }`}
@@ -249,6 +249,46 @@ export default function DriversPage() {
 
             <form onSubmit={handleInvite}>
               <div className="grid grid-cols-1 gap-4 mb-6">
+                {/* first Name */}
+                <div>
+                  <label
+                    htmlFor="driverName"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Name
+                  </label>
+                  <input
+                    id="driverFirstName"
+                    name="driverFirstName"
+                    type="text"
+                    value={driverFirstName}
+                    onChange={(e) => setDriverFirstName(e.target.value)}
+                    autoComplete="first name"
+                    placeholder="Enter driver's First name"
+                    className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                    disabled={isInvited || isInviting || isVerifying}
+                  />
+                </div>
+                {/* last Name */}
+                <div>
+                  <label
+                    htmlFor="driverName"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Name
+                  </label>
+                  <input
+                    id="driverLastName"
+                    name="driverLastName"
+                    type="text"
+                    value={driverLastName}
+                    onChange={(e) => setDriverLastName(e.target.value)}
+                    autoComplete="last name"
+                    placeholder="Enter driver's last name"
+                    className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                    disabled={isInvited || isInviting || isVerifying}
+                  />
+                </div>
                 <div>
                   <label
                     htmlFor="driverPhone"
@@ -268,25 +308,7 @@ export default function DriversPage() {
                     disabled={isInvited || isInviting || isVerifying}
                   />
                 </div>
-                 <div>
-                  <label
-                    htmlFor="driverName"
-                    className="block mb-2 text-sm font-medium text-gray-700"
-                  >
-                    Name
-                  </label>
-                  <input
-                    id="driverName"
-                    name="driverName"
-                    type="text"
-                    value={driverName}
-                    onChange={(e) => setDriverName(e.target.value)}
-                    autoComplete="name"
-                    placeholder="Enter driver's name"
-                    className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
-                    disabled={isInvited || isInviting || isVerifying}
-                  />
-                </div>
+                 
                 {/* drivingLicense */}
                  <div>
                   <label

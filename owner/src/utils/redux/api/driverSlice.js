@@ -17,18 +17,18 @@ export const driverApiSlice = apiSlice.injectEndpoints({
       transformResponse: (res) =>
         (res.data || []).map((driver) => ({
           ...driver,
-          status: driver.assignedTo ? "Active" : "Inactive",
+          status: driver.assignmentStatus ? "Assigned" : "Unassigned",
         })),
     }),
 
     addDriver: builder.mutation({
-      query: ({ ownerId, name, phoneNumber, drivingLicense, joinedAt }) => ({
+      query: ({ firstName, lastName, phoneNumber, drivingLicense, joinedAt }) => ({
         url: `/drivers`,
         method: "POST",
            headers: {
           UserType: "busOwner",
         },
-        body: { name, phoneNumber, drivingLicense, joinedAt, UserType: "busOwner", },
+        body: { firstName, lastName, phoneNumber, drivingLicense, joinedAt, UserType: "busOwner", },
       }),
       invalidatesTags: [{ type: "Driver", id: "LIST" }],
       transformResponse: (res) => res.data,
@@ -44,10 +44,10 @@ export const driverApiSlice = apiSlice.injectEndpoints({
     }),
 
     assignDriver: builder.mutation({
-      query: ({ id, busId }) => ({
-        url: `/drivers/${id}/assign`,
+      query: ({ driverId, busId }) => ({
+        url: `/drivers/${driverId}/assign`,
         method: "PUT",
-        body: { busId },
+        body: { driverId, busId},
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: "Driver", id },

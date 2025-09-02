@@ -12,10 +12,13 @@ import {
   FaRupeeSign,
   FaBus,
   FaIdCard,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { Wifi, Usb, FileText, ClipboardCheck, Calendar } from "lucide-react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "sonner";
@@ -24,6 +27,7 @@ import {
   useAddBusMutation,
   useDeleteBusMutation,
   useGetAllBusesQuery,
+  useBulkAddBusMutation,
 } from "@/utils/redux/api/busSlice";
 import {
   useGetDriversQuery,
@@ -40,6 +44,7 @@ export default function BusesPage() {
   const searchParams = useSearchParams();
 
   const [showForm, setShowForm] = useState(false);
+  const [showBulkForm, setShowBulkForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedBusId, setSelectedBusId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,29 +57,31 @@ export default function BusesPage() {
   const [updateBus, { isLoading: isUpdating }] = useUpdateBusMutation();
   const [deleteBus, { isLoading: isDeleting }] = useDeleteBusMutation();
   const { data, isLoading, refetch } = useGetAllBusesQuery();
+  const [addBulkBus, { isLoading: isLoadingBulkRoutes }] =
+    useBulkAddBusMutation();
   const fallbackBuses = [
     { _id: 1, date: "2025-08-09", totalSeats: 40, seatsBooked: 24 },
   ];
-  const buses = data?.routes ?? fallbackBuses;
-  const chartData = buses.map((bus) => ({
-    date: bus.date,
-    totalSeats: bus.totalSeats ?? 20,
-    seatsBooked: bus.seatsBooked ?? 18,
-  }));
+  const buses = data?.buses ?? fallbackBuses;
+  // const chartData = buses.map((bus) => ({
+  //   date: bus.date,
+  //   totalSeats: bus.totalSeats ?? 20,
+  //   seatsBooked: bus.seatsBooked ?? 18,
+  // }));
 
   const { data: driverList = [], isLoading: driversLoading } =
     useGetDriversQuery();
   const [assignDriver, { isLoading: isAssigning }] = useAssignDriverMutation();
 
-  const handleSwapRoute = () => {
-    setBusData((prev) => {
-      return {
-        ...prev,
-        routeFrom: prev.routeTo,
-        routeTo: prev.routeFrom,
-      };
-    });
-  };
+  // const handleSwapRoute = () => {
+  //   setBusData((prev) => {
+  //     return {
+  //       ...prev,
+  //       routeFrom: prev.baseRouteTo,
+  //       routeTo: prev.baseRouteFrom,
+  //     };
+  //   });
+  // };
   const USERS_PER_PAGE = 6;
   const totalPages = Math.ceil(buses.length / USERS_PER_PAGE);
   const startIndex = (currentPage - 1) * USERS_PER_PAGE;
@@ -115,8 +122,6 @@ export default function BusesPage() {
   const [busData, setBusData] = useState({
     busNumber: "",
     busName: "",
-    routeFrom: "",
-    routeTo: "",
     date: "",
     departureTime: "",
     numberOfSeats: "",
@@ -298,81 +303,84 @@ export default function BusesPage() {
   const handleBulkSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !bulkBusData.busNumber ||
-      !bulkBusData.busName ||
-      !bulkBusData.routeFrom ||
-      !bulkBusData.routeTo ||
-      !bulkBusData.startDate ||
-      !bulkBusData.departureTime ||
-      !bulkBusData.arrivalTime ||
-      !bulkBusData.price ||
-      !bulkBusData.endDate
-    ) {
-      alert("Please fill in all required fields");
-      return;
-    }
+    const payload = {
+      busId: bulkBusData.busId, // must come from your buses list / selection
+      startDate: bulkBusData.startDate,
+      endDate: bulkBusData.endDate,
+      routeFrom: bulkBusData.routeFrom,
+      routeTo: bulkBusData.routeTo,
+      departureTime: bulkBusData.departureTime,
+      arrivalTime: bulkBusData.arrivalTime,
+      basePrice: bulkBusData.price ? Number(bulkBusData.price) : null,
+      routeStops: bulkBusData.routeStops || [],
+      frequency: bulkBusData.frequency || "daily",
+      notes: bulkBusData.notes || "",
+      restrictions: bulkBusData.restrictions || [],
+      tags: bulkBusData.tags || [],
+    };
 
-    if (
-      bulkBusData.frequency === "weekly" &&
-      bulkBusData.daysOfWeek.length === 0
-    ) {
-      alert("Please select at least one day of the week for weekly frequency");
-      return;
-    }
+    console.log("Bulk payload ready to send:", payload);
 
-    setIsBulkCreating(true);
+    // Required fields check
+    const requiredFields = [
+      "busId",
+      "startDate",
+      "endDate",
+      "routeFrom",
+      "routeTo",
+      "departureTime",
+      "arrivalTime",
+      "basePrice",
+    ];
+
+    for (let field of requiredFields) {
+      if (!payload[field]) {
+        toast.error(`Please fill ${field}`);
+        return;
+      }
+    }
 
     try {
-      const response = await fetch("/api/v1/bus-owner/buses/routes/bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          busNumber: bulkBusData.busNumber,
-          busName: bulkBusData.busName,
-          routeFrom: bulkBusData.routeFrom,
-          routeTo: bulkBusData.routeTo,
-          startDate: bulkBusData.startDate,
-          endDate: bulkBusData.endDate,
-          departureTime: bulkBusData.departureTime,
-          arrivalTime: bulkBusData.arrivalTime,
-          price: parseInt(bulkBusData.price),
-          totalSeats: parseInt(bulkBusData.totalSeats),
-          frequency: bulkBusData.frequency,
-          daysOfWeek: bulkBusData.daysOfWeek,
-          routeStops: bulkBusData.routeStops,
-        }),
+      //Call mutation
+      const result = await addBulkBus(payload);
+
+      console.log("Bulk API raw result:", result);
+
+      // Unwrap result to throw on error
+      await result.unwrap?.();
+
+      // Success feedback
+      toast.success("Bulk routes created successfully 🎉");
+
+      // Reset form after success
+      setBulkBusData({
+        busNumber: "",
+        busName: "",
+        routeFrom: "",
+        routeTo: "",
+        startDate: "",
+        endDate: "",
+        departureTime: "",
+        arrivalTime: "",
+        price: "",
+        totalSeats: "32",
+        frequency: "daily",
+        daysOfWeek: [],
+        routeStops: [],
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        alert(`Successfully created ${result.data.routesCreated} routes!`);
-
-        setBulkBusData({
-          busNumber: "",
-          busName: "",
-          routeFrom: "",
-          routeTo: "",
-          startDate: "",
-          endDate: "",
-          departureTime: "",
-          arrivalTime: "",
-          price: "",
-          totalSeats: "32",
-          frequency: "daily",
-          daysOfWeek: [],
-        });
-      } else {
-        alert(`Error: ${result.message}`);
-      }
     } catch (error) {
-      console.error("Bulk creation failed:", error);
-      alert("Failed to create routes. Please try again.");
-    } finally {
-      setIsBulkCreating(false);
+      console.error("Bulk submit failed:", error);
+
+      // Detailed RTK Query error info
+      if (error?.data) {
+        console.error("Server response:", error.data);
+        toast.error(error.data.message || "Server returned an error");
+      } else if (error?.status) {
+        console.error("Status code:", error.status);
+        toast.error(`Request failed with status ${error.status}`);
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
     }
   };
 
@@ -382,6 +390,15 @@ export default function BusesPage() {
     { id: 3, name: "Amit Sharma" },
   ];
 
+  const handleDelete = async (routeId) => {
+    try {
+      await deleteBus(routeId).unwrap();
+      console.log("Bus deleted successfully!");
+    } catch (err) {
+      console.error("Failed to delete bus: ", err);
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setBusData((prev) => ({
@@ -389,6 +406,23 @@ export default function BusesPage() {
       [name]: value,
     }));
   };
+  const bulkFormRef = useRef(null);
+  const handleOpenBulkForm = () => {
+    setShowBulkForm(true);
+
+    setTimeout(() => {
+      bulkFormRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
+  const showFormRef = useRef(null);
+  const handleOpenBusForm = () => {
+    setShowForm(true);
+
+    setTimeout(() => {
+      showFormRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
       <BottomNav />
@@ -423,13 +457,25 @@ export default function BusesPage() {
             <h2 className="text-[#004aad] text-[22px] font-semibold">
               Your Buses
             </h2>
-            <button
-              onClick={(e) => setShowForm(true)}
-              className="flex items-center text-xs gap-2 bg-[#004aad] text-white h-8 px-4 py-2 rounded hover:bg-[#0056b3] transition cursor-pointer"
-            >
-              <FaPlus />
-              Add Buses
-            </button>
+
+            {/* Make this flex so the buttons sit next to each other */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleOpenBusForm}
+                className="flex items-center text-xs gap-2 bg-[#004aad] text-white h-8 px-4 py-2 rounded hover:bg-[#0056b3] transition cursor-pointer"
+              >
+                <FaPlus />
+                Add Buses
+              </button>
+
+              <button
+                onClick={handleOpenBulkForm}
+                className="flex items-center text-xs gap-2 bg-[#004aad] text-white h-8 px-4 py-2 rounded hover:bg-[#0056b3] transition cursor-pointer"
+              >
+                <FaPlus />
+                Add Bulk Route
+              </button>
+            </div>
           </div>
         </div>
 
@@ -464,19 +510,57 @@ export default function BusesPage() {
                         <button
                           title="Edit Bus"
                           onClick={() => {
+                            setShowBulkForm(true);
+                            setEditMode(true);
+                            setSelectedBusId(bus._id);
+                            setBulkBusData({
+                              busId: bus._id || "",
+                              busNumber: bus.busNumber || "",
+                              busName: bus.busName || "",
+                              routeFrom: bus.baseRouteFrom || "",
+                              routeTo: bus.baseRouteTo || "",
+                              startDate: "", // user must select
+                              endDate: "", // user must select
+                              departureTime: "",
+                              arrivalTime: "",
+                              price: bus.basePrice?.toString() || "",
+                              totalSeats: bus.totalSeats?.toString() || "32",
+                              frequency: "daily",
+                              daysOfWeek: [],
+                              routeStops: [],
+                            });
+                          }}
+                          className="bg-[#007bff1a] hover:bg-[#007bff33] py-1.5 px-1.5 rounded-lg transition duration-200"
+                        >
+                          <FaPlus className="text-[#004aad]" />
+                        </button>
+                        <button
+                          title="Edit Bus"
+                          onClick={() => {
                             setShowForm(true);
                             setEditMode(true);
                             setSelectedBusId(bus._id);
                             setBusData({
                               busNumber: bus.busNumber || "",
                               busName: bus.busName || "",
-                              routeFrom: bus.baseRouteFrom || "",
-                              routeTo: bus.baseRouteTo || "",
-                              date: bus.date || "",
+                              baseRouteFrom: bus.baseRouteFrom || "",
+                              baseRouteTo: bus.baseRouteTo || "",
+                              ticketPrice: bus.ticketPrice?.toString() || "",
                               departureTime: bus.departureTime || "",
                               arrivalTime: bus.arrivalTime || "",
                               totalSeats: bus.totalSeats?.toString() || "",
-                              price: bus.price?.toString() || "",
+                              seatingCapacity:
+                                bus.seatingCapacity?.toString() || "",
+                              basePrice: bus.basePrice?.toString() || "",
+                              busType: bus.busType || "",
+                              amenities: bus.amenities
+                                ? bus.amenities.join(", ")
+                                : "",
+                              registrationNumber: bus.registrationNumber || "",
+                              insuranceExpiry: bus.insuranceExpiry || "",
+                              permitExpiry: bus.permitExpiry || "",
+                              yearOfManufacture:
+                                bus.yearOfManufacture?.toString() || "",
                             });
                           }}
                           className="bg-[#007bff1a] hover:bg-[#007bff33] py-2 pl-2 pr-1.5 rounded-lg transition duration-200"
@@ -501,12 +585,12 @@ export default function BusesPage() {
                           {bus.baseRouteFrom} → {bus.baseRouteTo}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                      {/* <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FaClock className="text-[#004aad]" />
                         <span>
                           {bus.departureTime} - {bus.arrivalTime}
                         </span>
-                      </div>
+                      </div> */}
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FaChair className="text-[#004aad]" />
                         <span>{bus.totalSeats}</span>
@@ -561,22 +645,26 @@ export default function BusesPage() {
                       <label className="font-medium">Driver:</label>
                       <select
                         className="border border-gray-300 font-semibold rounded px-2 py-1 w-full md:w-56 text-sm focus:outline-none focus:ring focus:ring-[#0056b3]"
-                        value={selectedDrivers[bus._id] || ""}
                         onChange={(e) =>
-                          handleAssignDriver(e.target.value, bus._id)
+                          assignDriver({
+                            driverId: e.target.value,
+                            busId: bus._id,
+                          })
                         }
                         disabled={isAssigning}
+                        defaultValue=""
                       >
                         <option value="" className="font-semibold" disabled>
                           Assign Driver
                         </option>
+
                         {driverList.map((driver) => (
                           <option
+                            key={driver._id}
+                            value={driver._id}
                             disabled={
-                              driver.assignedTo && driver.assignedTo !== bus.id
+                              driver.assignedTo && driver.assignedTo !== bus._id
                             }
-                            key={driver.id}
-                            value={driver.id}
                             className="font-semibold"
                           >
                             {driver.driverName}
@@ -607,7 +695,10 @@ export default function BusesPage() {
 
         {/* FORM SECTION */}
         {showForm && (
-          <section className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
+          <section
+            className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp"
+            ref={showFormRef}
+          >
             <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
               {editMode ? "Update Bus" : "Add New Bus"}
             </h2>
@@ -885,428 +976,474 @@ export default function BusesPage() {
         )}
 
         {/* Bulk Route Creation Form */}
-        <section className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
-          <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
-            Bulk Route Creation (6 Months)
-          </h2>
-          <p className="text-gray-600 mb-6 text-sm">
-            Create routes for all 6 months at once. This will generate buses for
-            the specified frequency and date range.
-          </p>
+        {showBulkForm && (
+          <section
+            className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp"
+            ref={bulkFormRef}
+          >
+            <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
+              Bulk Route Creation (6 Months)
+            </h2>
+            <p className="text-gray-600 mb-6 text-sm">
+              Create routes for all 6 months at once. This will generate buses
+              for the specified frequency and date range.
+            </p>
 
-          <form onSubmit={handleBulkSubmit} className="space-y-6">
-            {/* Basic Bus Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Bus Number
-                </label>
-                <input
-                  value={bulkBusData.busNumber}
-                  onChange={(e) =>
-                    setBulkBusData({
-                      ...bulkBusData,
-                      busNumber: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., MH01 AB 1234"
-                  type="text"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
+            <form onSubmit={handleBulkSubmit} className="space-y-6">
+              {/* Basic Bus Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Bus Number
+                  </label>
+                  <input
+                    value={bulkBusData.busNumber}
+                    onChange={(e) =>
+                      setBulkBusData({
+                        ...bulkBusData,
+                        busNumber: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., MH01 AB 1234"
+                    type="text"
+                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Bus Name
+                  </label>
+                  <input
+                    value={bulkBusData.busName}
+                    onChange={(e) =>
+                      setBulkBusData({
+                        ...bulkBusData,
+                        busName: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., Express 1"
+                    type="text"
+                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Bus Name
-                </label>
-                <input
-                  value={bulkBusData.busName}
-                  onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, busName: e.target.value })
-                  }
-                  placeholder="e.g., Express 1"
-                  type="text"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
-              </div>
-            </div>
 
-            {/* Route Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  From City
-                </label>
-                <input
-                  value={bulkBusData.routeFrom}
-                  onChange={(e) =>
-                    setBulkBusData({
-                      ...bulkBusData,
-                      routeFrom: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., Mumbai"
-                  type="text"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
+              {/* Route Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    From City
+                  </label>
+                  <input
+                    value={bulkBusData.routeFrom}
+                    onChange={(e) =>
+                      setBulkBusData({
+                        ...bulkBusData,
+                        routeFrom: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., Mumbai"
+                    type="text"
+                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    To City
+                  </label>
+                  <input
+                    value={bulkBusData.routeTo}
+                    onChange={(e) =>
+                      setBulkBusData({
+                        ...bulkBusData,
+                        routeTo: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., Pune"
+                    type="text"
+                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  To City
-                </label>
-                <input
-                  value={bulkBusData.routeTo}
-                  onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, routeTo: e.target.value })
-                  }
-                  placeholder="e.g., Pune"
-                  type="text"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
-              </div>
-            </div>
 
-            {/* Schedule Information */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Start Date
-                </label>
-                <input
-                  value={bulkBusData.startDate}
-                  onChange={(e) =>
-                    setBulkBusData({
-                      ...bulkBusData,
-                      startDate: e.target.value,
-                    })
-                  }
-                  type="date"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
+              {/* Schedule Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Start Date
+                  </label>
+                  <input
+                    value={bulkBusData.startDate}
+                    onChange={(e) =>
+                      setBulkBusData({
+                        ...bulkBusData,
+                        startDate: e.target.value,
+                      })
+                    }
+                    type="date"
+                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    End Date
+                  </label>
+                  <input
+                    value={bulkBusData.endDate}
+                    onChange={(e) =>
+                      setBulkBusData({
+                        ...bulkBusData,
+                        endDate: e.target.value,
+                      })
+                    }
+                    type="date"
+                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
+                {/* Departure Time */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Departure Time
+                  </label>
+                  <DatePicker
+                    selected={bulkBusData.departureTime}
+                    onChange={(time) =>
+                      setBulkBusData({ ...bulkBusData, departureTime: time })
+                    }
+                    showTimeSelect
+                    showTimeSelectOnly
+                    timeIntervals={15}
+                    timeCaption="Time"
+                    dateFormat="h:mm aa"
+                    placeholderText="Select departure time"
+                    className="w-auto md:w-80 p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
+                {/* Arrival Time */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Arrival Time
+                  </label>
+                  <DatePicker
+                    selected={bulkBusData.arrivalTime}
+                    onChange={(time) =>
+                      setBulkBusData({ ...bulkBusData, arrivalTime: time })
+                    }
+                    showTimeSelect
+                    showTimeSelectOnly
+                    timeIntervals={15}
+                    timeCaption="Time"
+                    dateFormat="h:mm aa"
+                    placeholderText="Select arrival time"
+                    className="w-auto md:w-80 p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  End Date
-                </label>
-                <input
-                  value={bulkBusData.endDate}
-                  onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, endDate: e.target.value })
-                  }
-                  type="date"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
-              </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Departure Time
-                </label>
-                <input
-                  value={bulkBusData.departureTime}
-                  onChange={(e) =>
-                    setBulkBusData({
-                      ...bulkBusData,
-                      departureTime: e.target.value,
-                    })
-                  }
-                  type="time"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
-              </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Arrival Time
-                </label>
-                <input
-                  value={bulkBusData.arrivalTime}
-                  onChange={(e) =>
-                    setBulkBusData({
-                      ...bulkBusData,
-                      arrivalTime: e.target.value,
-                    })
-                  }
-                  type="time"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
-              </div>
-            </div>
 
-            {/* Frequency and Pricing */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Frequency
-                </label>
-                <select
-                  value={bulkBusData.frequency}
-                  onChange={(e) =>
-                    setBulkBusData({
-                      ...bulkBusData,
-                      frequency: e.target.value,
-                    })
-                  }
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
+              {/* Frequency and Pricing */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Frequency
+                  </label>
+                  <select
+                    value={bulkBusData.frequency}
+                    onChange={(e) =>
+                      setBulkBusData({
+                        ...bulkBusData,
+                        frequency: e.target.value,
+                      })
+                    }
+                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Ticket Price (₹)
+                  </label>
+                  <input
+                    value={bulkBusData.price}
+                    onChange={(e) =>
+                      setBulkBusData({ ...bulkBusData, price: e.target.value })
+                    }
+                    placeholder="e.g., 500"
+                    type="number"
+                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Total Seats
+                  </label>
+                  <input
+                    value={bulkBusData.totalSeats}
+                    onChange={(e) =>
+                      setBulkBusData({
+                        ...bulkBusData,
+                        totalSeats: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 32"
+                    type="number"
+                    className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Ticket Price (₹)
-                </label>
-                <input
-                  value={bulkBusData.price}
-                  onChange={(e) =>
-                    setBulkBusData({ ...bulkBusData, price: e.target.value })
-                  }
-                  placeholder="e.g., 500"
-                  type="number"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
-              </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Total Seats
-                </label>
-                <input
-                  value={bulkBusData.totalSeats}
-                  onChange={(e) =>
-                    setBulkBusData({
-                      ...bulkBusData,
-                      totalSeats: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., 32"
-                  type="number"
-                  className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                />
-              </div>
-            </div>
 
-            {/* Weekly Frequency Options */}
-            {bulkBusData.frequency === "weekly" && (
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Days of Week
+              {/* Weekly Frequency Options */}
+              {bulkBusData.frequency === "weekly" && (
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Days of Week
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday",
+                      "Friday",
+                      "Saturday",
+                      "Sunday",
+                    ].map((day, index) => (
+                      <label key={day} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={bulkBusData.daysOfWeek.includes(index + 1)}
+                          onChange={(e) => {
+                            const dayNumber = index + 1;
+                            if (e.target.checked) {
+                              setBulkBusData({
+                                ...bulkBusData,
+                                daysOfWeek: [
+                                  ...bulkBusData.daysOfWeek,
+                                  dayNumber,
+                                ],
+                              });
+                            } else {
+                              setBulkBusData({
+                                ...bulkBusData,
+                                daysOfWeek: bulkBusData.daysOfWeek.filter(
+                                  (d) => d !== dayNumber
+                                ),
+                              });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-[#004aad] focus:ring-[#004aad]"
+                        />
+                        <span className="text-sm text-gray-700">{day}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Route Stops (Optional) *****************************************************************/}
+              <div className="space-y-4">
+                <label className="block text-gray-700 font-medium">
+                  Route Stops (Optional)
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                    "Sunday",
-                  ].map((day, index) => (
-                    <label key={day} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={bulkBusData.daysOfWeek.includes(index + 1)}
-                        onChange={(e) => {
-                          const dayNumber = index + 1;
-                          if (e.target.checked) {
-                            setBulkBusData({
-                              ...bulkBusData,
-                              daysOfWeek: [
-                                ...bulkBusData.daysOfWeek,
-                                dayNumber,
-                              ],
-                            });
-                          } else {
-                            setBulkBusData({
-                              ...bulkBusData,
-                              daysOfWeek: bulkBusData.daysOfWeek.filter(
-                                (d) => d !== dayNumber
-                              ),
-                            });
+
+                {bulkBusData.routeStops.map((stop, index) => (
+                  <div
+                    key={index}
+                    className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm space-y-3"
+                  >
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-gray-800 font-semibold">
+                        Stop {index + 1} ({stop.stopType})
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => removeRouteStop(index)}
+                        className="bg-[#ad0400] text-white px-3 py-1 rounded text-sm hover:bg-red-700 cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-gray-600">
+                          Stop Name
+                        </label>
+                        <input
+                          type="text"
+                          value={stop.name}
+                          onChange={(e) =>
+                            updateRouteStop(index, "name", e.target.value)
                           }
-                        }}
-                        className="rounded border-gray-300 text-[#004aad] focus:ring-[#004aad]"
-                      />
-                      <span className="text-sm text-gray-700">{day}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Route Stops (Optional) *****************************************************************/}
-            <div className="space-y-4">
-              <label className="block text-gray-700 font-medium">
-                Route Stops (Optional)
-              </label>
+                          className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                        />
+                      </div>
 
-              {bulkBusData.routeStops.map((stop, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm space-y-3"
+                      <div>
+                        <label className="block text-sm text-gray-600">
+                          District
+                        </label>
+                        <input
+                          type="text"
+                          value={stop.district}
+                          onChange={(e) =>
+                            updateRouteStop(index, "district", e.target.value)
+                          }
+                          className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-gray-600">
+                          Arrival Time
+                        </label>
+                        <DatePicker
+                          selected={
+                            stop.arrivalTime ? new Date(stop.arrivalTime) : null
+                          }
+                          onChange={(time) =>
+                            updateRouteStop(index, "arrivalTime", time)
+                          }
+                          showTimeSelect
+                          showTimeSelectOnly
+                          timeIntervals={15}
+                          timeCaption="Time"
+                          dateFormat="h:mm aa" // 12-hour format with AM/PM
+                          placeholderText="Select arrival time"
+                          className="w-full md:w-115 p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                        />
+                      </div>
+
+                      {/* Departure Time */}
+                      <div>
+                        <label className="block text-sm text-gray-600">
+                          Departure Time
+                        </label>
+                        <DatePicker
+                          selected={
+                            stop.departureTime
+                              ? new Date(stop.departureTime)
+                              : null
+                          }
+                          onChange={(time) =>
+                            updateRouteStop(index, "departureTime", time)
+                          }
+                          showTimeSelect
+                          showTimeSelectOnly
+                          timeIntervals={15}
+                          timeCaption="Time"
+                          dateFormat="h:mm aa"
+                          placeholderText="Select departure time"
+                          className="w-full md:w-115 p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-gray-600">
+                          Halt Duration (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          value={stop.haltDuration}
+                          onChange={(e) =>
+                            updateRouteStop(
+                              index,
+                              "haltDuration",
+                              parseInt(e.target.value)
+                            )
+                          }
+                          className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-gray-600">
+                          Distance From Main (km)
+                        </label>
+                        <input
+                          type="number"
+                          value={stop.distanceFromMain}
+                          onChange={(e) =>
+                            updateRouteStop(
+                              index,
+                              "distanceFromMain",
+                              parseInt(e.target.value)
+                            )
+                          }
+                          className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-gray-600">
+                          Distance To Main (km)
+                        </label>
+                        <input
+                          type="number"
+                          value={
+                            isNaN(stop.distanceToMain)
+                              ? ""
+                              : stop.distanceToMain
+                          }
+                          onChange={(e) =>
+                            updateRouteStop(
+                              index,
+                              "distanceToMain",
+                              parseInt(e.target.value)
+                            )
+                          }
+                          className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-600">
+                        Notes
+                      </label>
+                      <textarea
+                        value={stop.notes}
+                        onChange={(e) =>
+                          updateRouteStop(index, "notes", e.target.value)
+                        }
+                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addRouteStop}
+                  className="px-4 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition"
                 >
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-gray-800 font-semibold">
-                      Stop {index + 1} ({stop.stopType})
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => removeRouteStop(index)}
-                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
+                  + Add Stop
+                </button>
+              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-gray-600">
-                        Stop Name
-                      </label>
-                      <input
-                        type="text"
-                        value={stop.name}
-                        onChange={(e) =>
-                          updateRouteStop(index, "name", e.target.value)
-                        }
-                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm text-gray-600">
-                        District
-                      </label>
-                      <input
-                        type="text"
-                        value={stop.district}
-                        onChange={(e) =>
-                          updateRouteStop(index, "district", e.target.value)
-                        }
-                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm text-gray-600">
-                        Arrival Time
-                      </label>
-                      <input
-                        type="time"
-                        value={stop.arrivalTime}
-                        onChange={(e) =>
-                          updateRouteStop(index, "arrivalTime", e.target.value)
-                        }
-                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm text-gray-600">
-                        Departure Time
-                      </label>
-                      <input
-                        type="time"
-                        value={stop.departureTime}
-                        onChange={(e) =>
-                          updateRouteStop(
-                            index,
-                            "departureTime",
-                            e.target.value
-                          )
-                        }
-                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm text-gray-600">
-                        Halt Duration (minutes)
-                      </label>
-                      <input
-                        type="number"
-                        value={stop.haltDuration}
-                        onChange={(e) =>
-                          updateRouteStop(
-                            index,
-                            "haltDuration",
-                            parseInt(e.target.value)
-                          )
-                        }
-                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm text-gray-600">
-                        Distance From Main (km)
-                      </label>
-                      <input
-                        type="number"
-                        value={stop.distanceFromMain}
-                        onChange={(e) =>
-                          updateRouteStop(
-                            index,
-                            "distanceFromMain",
-                            parseInt(e.target.value)
-                          )
-                        }
-                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm text-gray-600">
-                        Distance To Main (km)
-                      </label>
-                      <input
-                        type="number"
-                        value={stop.distanceToMain}
-                        onChange={(e) =>
-                          updateRouteStop(
-                            index,
-                            "distanceToMain",
-                            parseInt(e.target.value)
-                          )
-                        }
-                        className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-gray-600">Notes</label>
-                    <textarea
-                      value={stop.notes}
-                      onChange={(e) =>
-                        updateRouteStop(index, "notes", e.target.value)
-                      }
-                      className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
-                    />
-                  </div>
-                </div>
-              ))}
-
-              <button
-                type="button"
-                onClick={addRouteStop}
-                className="px-4 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition"
-              >
-                + Add Stop
-              </button>
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex justify-center md:justify-end w-full">
-              <button
-                type="submit"
-                disabled={isBulkCreating}
-                className="px-6 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isBulkCreating
-                  ? "Creating Routes..."
-                  : "Create Routes for 12 Months"}
-              </button>
-            </div>
-          </form>
-        </section>
+              {/* Submit Button */}
+              <div className="flex justify-center md:justify-end w-full gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkForm(false)}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isBulkCreating}
+                  className="px-6 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isBulkCreating
+                    ? "Creating Routes..."
+                    : "Create Routes for 12 Months"}
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
       </main>
     </div>
   );
