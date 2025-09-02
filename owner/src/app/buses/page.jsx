@@ -384,12 +384,6 @@ export default function BusesPage() {
     }
   };
 
-  const drivers = [
-    { id: 1, name: "Rajesh Kumar" },
-    { id: 2, name: "Sunil Patil" },
-    { id: 3, name: "Amit Sharma" },
-  ];
-
   const handleDelete = async (routeId) => {
     try {
       await deleteBus(routeId).unwrap();
@@ -513,6 +507,7 @@ export default function BusesPage() {
                             setShowBulkForm(true);
                             setEditMode(true);
                             setSelectedBusId(bus._id);
+                            handleOpenBulkForm();
                             setBulkBusData({
                               busId: bus._id || "",
                               busNumber: bus.busNumber || "",
@@ -540,6 +535,7 @@ export default function BusesPage() {
                             setShowForm(true);
                             setEditMode(true);
                             setSelectedBusId(bus._id);
+                            handleOpenBusForm();
                             setBusData({
                               busNumber: bus.busNumber || "",
                               busName: bus.busName || "",
