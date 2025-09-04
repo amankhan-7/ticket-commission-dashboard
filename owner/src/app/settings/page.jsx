@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
+import AccountForm from "@/components/account/account-form";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -59,9 +60,11 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-
+  <  AccountForm/>
+        
+      
         {/* Settings Form */}
-        <section className="bg-white rounded-[12px] p-6 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
+        {/* <section className="bg-white rounded-[12px] p-6 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
           <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
             Account Settings
           </h2>
@@ -126,7 +129,7 @@ export default function SettingsPage() {
               </button>
             </div>
           </form>
-        </section>
+        </section> */}
       </main>
     </div>
   );

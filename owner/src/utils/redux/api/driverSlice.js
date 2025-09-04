@@ -14,21 +14,30 @@ export const driverApiSlice = apiSlice.injectEndpoints({
               { type: "Driver", id: "LIST" },
             ]
           : [{ type: "Driver", id: "LIST" }],
-      transformResponse: (res) =>
-        (res.data || []).map((driver) => ({
-          ...driver,
-          status: driver.assignmentStatus ? "Assigned" : "Unassigned",
-        })),
+      transformResponse: (res) => res.data,
     }),
 
     addDriver: builder.mutation({
-      query: ({ firstName, lastName, phoneNumber, drivingLicense, joinedAt }) => ({
+      query: ({
+        firstName,
+        lastName,
+        phoneNumber,
+        drivingLicense,
+        joinedAt,
+      }) => ({
         url: `/drivers`,
         method: "POST",
-           headers: {
+        headers: {
           UserType: "busOwner",
         },
-        body: { firstName, lastName, phoneNumber, drivingLicense, joinedAt, UserType: "busOwner", },
+        body: {
+          firstName,
+          lastName,
+          phoneNumber,
+          drivingLicense,
+          joinedAt,
+          UserType: "busOwner",
+        },
       }),
       invalidatesTags: [{ type: "Driver", id: "LIST" }],
       transformResponse: (res) => res.data,
@@ -47,7 +56,21 @@ export const driverApiSlice = apiSlice.injectEndpoints({
       query: ({ driverId, busId }) => ({
         url: `/drivers/${driverId}/assign`,
         method: "PUT",
-        body: { driverId, busId},
+        body: { driverId, busId },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Driver", id },
+        { type: "Driver", id: "LIST" },
+        { type: "Route", id: "LIST" },
+      ],
+      transformResponse: (res) => res.data,
+    }),
+
+    unassignDriver: builder.mutation({
+      query: ({ driverId, busId }) => ({
+        url: `/drivers/${driverId}/unassign`,
+        method: "PUT",
+        body: { busId },
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: "Driver", id },
@@ -98,6 +121,7 @@ export const {
   useAddDriverMutation,
   useRemoveDriverMutation,
   useAssignDriverMutation,
+  useUnassignDriverMutation,
   useGetDriverByIdQuery,
   useUpdateDriverMutation,
   useVerifyDriverInvitationMutation,

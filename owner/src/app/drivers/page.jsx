@@ -9,6 +9,9 @@ import {
   FaPhone,
   FaCalendarCheck,
   FaCircle,
+  FaUserMinus,
+  FaUserTimes,
+  FaUsersSlash,
 } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
@@ -17,10 +20,9 @@ import {
   useVerifyDriverInvitationMutation,
   useGetDriversQuery,
   useRemoveDriverMutation,
+  useUnassignDriverMutation,
 } from "@/utils/redux/api/driverSlice";
-import { useRouter } from 'next/navigation';
-
-
+import { useRouter } from "next/navigation";
 
 export default function DriversPage() {
   const router = useRouter();
@@ -28,20 +30,18 @@ export default function DriversPage() {
   const [driverPhone, setDriverPhone] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [driverFirstName, setDriverFirstName] = useState("");
-   const [driverLastName, setDriverLastName] = useState("");
+  const [driverLastName, setDriverLastName] = useState("");
   const [drivingLicense, setDriverDrivingLicense] = useState("");
   const [joiningDate, setJoiningDate] = useState("");
   const [isInvited, setIsInvited] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
-  const [addDriverMut, { isLoading: isInviting } ] = useAddDriverMutation();
-  const [verifyInvitation, { isLoading: isVerifying } ] = useVerifyDriverInvitationMutation();
-    const {
-    data: driversList = [],
-    isLoading,
-    isError,
-  } = useGetDriversQuery();
+  const [addDriverMut, { isLoading: isInviting }] = useAddDriverMutation();
+  const [verifyInvitation, { isLoading: isVerifying }] =
+    useVerifyDriverInvitationMutation();
+  const { data: driversList = [], isLoading, isError } = useGetDriversQuery();
   const [removeDriver, { isLoading: isRemoving }] = useRemoveDriverMutation();
+  const [unAssign, { isLoading: isUnAssigning }] = useUnassignDriverMutation();
 
   const sortedDrivers = [...driversList].sort(
     (a, b) => (b.status === "Active") - (a.status === "Active")
@@ -121,12 +121,12 @@ export default function DriversPage() {
       console.error("Failed to remove driver:", error);
     }
   };
-   const user = useSelector(selectCurrentUser);
-   const profilePic = useSelector((state) => state.profile.profilePic);
-   const initials =
-     user?.firstName && user?.lastName
-       ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
-       : "SB";
+  const user = useSelector(selectCurrentUser);
+  const profilePic = useSelector((state) => state.profile.profilePic);
+  const initials =
+    user?.firstName && user?.lastName
+      ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
+      : "SB";
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
@@ -172,7 +172,6 @@ export default function DriversPage() {
             Add Drivers
           </button>
         </div>
-        
 
         {/* Drivers List */}
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 py-6 max-w-5xl mx-auto w-full animate-fadeInUp">
@@ -196,14 +195,29 @@ export default function DriversPage() {
                     <h2 className="text-base font-semibold text-gray-800">
                       {driver.driverName}
                     </h2>
-                    <button
-                      onClick={() => handleDelete(driver._id)}
-                      disabled={isRemoving}
-                      title="Remove Driver"
-                      className="bg-[#007bff1a] text-[#004aad] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
-                    >
-                      <FaTrash />
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() =>
+                          unAssign({
+                            driverId: driver._id,
+                            busId: driver.assignedTo,
+                          })
+                        }
+                        disabled={isRemoving}
+                        title="Remove Driver"
+                        className="bg-[#007bff1a] text-[#004aad] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
+                      >
+                        <FaUserTimes />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(driver._id)}
+                        disabled={isRemoving}
+                        title="Remove Driver"
+                        className="bg-[#007bff1a] text-[#004aad] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-2 px-4 py-4 border-b border-gray-200 text-sm text-gray-700">
@@ -228,13 +242,13 @@ export default function DriversPage() {
 
                   <div
                     className={`flex items-center gap-2 p-2 font-medium ${
-                      driver.status === "Assigned"
-                        ? "text-[#28a745] bg-[#e6f9ee]"
-                        : "text-[#dc3545] bg-[#fdecea]"
+                      driver.assignmentStatus === "assigned"
+                        ? "text-[#28a745] bg-[#e6f9ee]" // green for assigned
+                        : "text-[#dc3545] bg-[#fdecea]" // red for unassigned
                     }`}
                   >
                     <FaCircle className="text-xs" />
-                    {driver.status}
+                      {driver.assignmentStatus.charAt(0).toUpperCase() + driver.assignmentStatus.slice(1)}
                   </div>
                 </div>
               ))}
@@ -308,9 +322,9 @@ export default function DriversPage() {
                     disabled={isInvited || isInviting || isVerifying}
                   />
                 </div>
-                 
+
                 {/* drivingLicense */}
-                 <div>
+                <div>
                   <label
                     htmlFor="drivingLicense"
                     className="block mb-2 text-sm font-medium text-gray-700"
@@ -329,8 +343,8 @@ export default function DriversPage() {
                     disabled={isInvited || isInviting || isVerifying}
                   />
                 </div>
-                   {/* Joining Date */}
-                 <div>
+                {/* Joining Date */}
+                <div>
                   <label
                     htmlFor="joiningDate"
                     className="block mb-2 text-sm font-medium text-gray-700"

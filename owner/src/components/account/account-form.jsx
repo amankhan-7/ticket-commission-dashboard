@@ -100,141 +100,131 @@ export default function AccountForm() {
   };
 
   return (
-    <Card className="p-6 gap-0 rounded-md shadow-sm">
-      <CardHeader className="text-lg font-bold text-primary p-0">
-        Edit Profile
-      </CardHeader>
+   <section className="bg-white rounded-[12px] p-6 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
+  <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
+    Edit Profile
+  </h2>
 
-      <CardContent className="p-0">
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleFormSubmit)}
-            className="flex flex-col mb-[1.25rem] max-md:flex-col max-md:gap-[1.25rem]"
-          >
-            <div className="flex flex-row justify-between w-full gap-[1.25rem]">
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem className="mb-[1.25rem] w-full">
-                    <FormLabel className="block mb-[0.5rem] font-semibold text-base leading-6 text-[var(--text-color)]">
-                      First Name
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Your first name"
-                        className="w-full px-[0.9375rem] py-[0.75rem] border border-[var(--border-color)] text-base transition-colors focus-visible:border focus-visible:border-primary 
-                      min-h-fit
-                          "
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+  <Form {...form}>
+    <form onSubmit={form.handleSubmit(handleFormSubmit)}>
+      {/* Grid layout for inputs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        {/* First Name */}
+        <FormField
+          control={form.control}
+          name="firstName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="block mb-2 text-sm font-medium text-gray-700">
+                First Name
+              </FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  placeholder="Your first name"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Last Name */}
+        <FormField
+          control={form.control}
+          name="lastName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="block mb-2 text-sm font-medium text-gray-700">
+                Last Name
+              </FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  placeholder="Your last name"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {/* Phone Number (readonly) */}
+      <FormField
+        control={form.control}
+        name="phone"
+        render={({ field }) => (
+          <FormItem className="mb-6">
+            <FormLabel className="block mb-2 text-sm font-medium text-gray-700">
+              Phone Number
+            </FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                type="tel"
+                placeholder="10-digit mobile number"
+                readOnly
+                disabled
+                className="w-full p-2 border border-slate-200 rounded-lg text-sm text-gray-700 disabled:opacity-100 disabled:cursor-not-allowed"
               />
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem className="mb-[1.25rem] w-full">
-                    <FormLabel className="block mb-[0.5rem] font-semibold text-base leading-6 text-[var(--text-color)]">
-                      Last Name
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Your last name"
-                        className="w-full px-[0.9375rem] py-[0.75rem] border border-[var(--border-color)] text-base transition-colors focus-visible:border focus-visible:border-primary 
-                      min-h-fit
-                      "
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </FormControl>
+            <FormDescription className="text-xs text-gray-500 mt-1">
+              Phone number cannot be changed.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Email */}
+      <FormField
+        control={form.control}
+        name="email"
+        render={({ field }) => (
+          <FormItem className="mb-6">
+            <FormLabel className="block mb-2 text-sm font-medium text-gray-700">
+              Email Address <span className="font-normal">(optional)</span>
+            </FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                type="email"
+                autoComplete="email"
+                placeholder="Your email address"
+                className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
               />
-            </div>
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem className="mb-[1.25rem]">
-                  <FormLabel className="block mb-[0.5rem] font-[500] text-[var(--text-color)] text-base">
-                    Phone Number
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="tel"
-                      placeholder="10-digit mobile number"
-                      readOnly
-                      disabled
-                      className="w-full px-[0.9375rem] py-[0.75rem] border border-[var(--border-color)] text-base 
-                          min-h-fit
-                          focus:outline-none focus:border-primary
-                          disabled:text-[var(--text-color)] disabled:cursor-not-allowed
-                          disabled:opacity-100
-                          cursor-not-allowed"
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Phone number cannot be changed.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            </FormControl>
+            {/* <FormDescription className="text-xs text-gray-500 mt-1">
+              For account recovery purpose.
+            </FormDescription> */}
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Email Address{" "}
-                    <span className="font-normal">(optional)</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="email"
-                      autoComplete="email"
-                      placeholder="Your email address"
-                      className="w-full px-[0.9375rem] py-[0.75rem] border border-[var(--border-color)] text-base transition-colors
-                    focus:outline-none
-                      min-h-fit
-                       focus-visible:border focus-visible:border-primary "
-                    />
-                  </FormControl>
-                  <FormDescription className="mt-[0.375rem] text-[0.85rem] text-[#666]">
-                    For receiving e-tickets and updates
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      {/* Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start">
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="bg-[#004aad] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-900 transition duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? "Saving..." : "Save Changes"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex items-center gap-2 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md px-4 py-2 hover:bg-[#f5f7fa] transition duration-200"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </Form>
+</section>
 
-            <div className="flex gap-4 pt-4">
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 px-[1.5625rem] py-[0.75rem] bg-primary text-white font-[500] text-base transition-colors min-h-fit"
-              >
-                {isLoading ? "Saving..." : "Save Changes"}
-              </Button>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={onCancel}
-                className="flex-1 py-[0.75rem] min-h-fit"
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
   );
 }

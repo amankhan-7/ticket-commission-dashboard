@@ -203,8 +203,8 @@ export default function BusesPage() {
     const payload = {
       busName: busData.busName,
       busNumber: busData.busNumber,
-      baseRouteFrom: busData.baseRouteFrom,
-      baseRouteTo: busData.baseRouteTo,
+      baseRouteFrom: titleCase(busData.baseRouteFrom),
+      baseRouteTo: titleCase(busData.baseRouteTo),
       totalSeats: busData.totalSeats ? Number(busData.totalSeats) : null,
       seatingCapacity: busData.seatingCapacity
         ? Number(busData.seatingCapacity)
@@ -307,8 +307,8 @@ export default function BusesPage() {
       busId: bulkBusData.busId, // must come from your buses list / selection
       startDate: bulkBusData.startDate,
       endDate: bulkBusData.endDate,
-      routeFrom: bulkBusData.routeFrom,
-      routeTo: bulkBusData.routeTo,
+      routeFrom: titleCase(bulkBusData.routeFrom),
+      routeTo: titleCase(bulkBusData.routeTo),
       departureTime: bulkBusData.departureTime,
       arrivalTime: bulkBusData.arrivalTime,
       basePrice: bulkBusData.price ? Number(bulkBusData.price) : null,
@@ -416,6 +416,13 @@ export default function BusesPage() {
       showFormRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 100);
   };
+  //hoisted casing of inputs
+  function titleCase(str) {
+  if (typeof str !== 'string') return str;
+  return str.trim().replace(/\S+/gu, word =>
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  );
+}
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
@@ -493,7 +500,8 @@ export default function BusesPage() {
                     className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
                   >
                     {/* Header */}
-                    <div className="flex justify-between items-center px-4 py-3.5 border-b border-gray-200">
+                    <div  className={`flex justify-between items-center px-4 py-3.5 border-b border-gray-200 
+    ${bus.status === "active" ? "bg-[#d5ffe7]" : "bg-white"}`}>
                       <h2 className="text-base font-semibold text-gray-800">
                         {bus.busName}
                         <p className="font-light text-xs text-gray-500">
@@ -1341,7 +1349,7 @@ export default function BusesPage() {
                         </label>
                         <input
                           type="number"
-                          value={stop.haltDuration}
+                           value={isNaN(stop.haltDuration) ? "" : stop.haltDuration}
                           onChange={(e) =>
                             updateRouteStop(
                               index,
@@ -1359,7 +1367,7 @@ export default function BusesPage() {
                         </label>
                         <input
                           type="number"
-                          value={stop.distanceFromMain}
+                          vvalue={isNaN(stop.distanceFromMain) ? "" : stop.distanceFromMain}
                           onChange={(e) =>
                             updateRouteStop(
                               index,

@@ -43,22 +43,28 @@ const AccountMenu = () => {
   };
 
   return (
-    <>
-      <div className="px-2 text-xs uppercase text-muted-foreground mb-2">
-        Account
-      </div>
-      <Card className="overflow-hidden py-0">
-        <CardContent className="p-0">
-          <MenuItem
-            label="Profile"
-            description="Edit your personal information"
-            Icon={User}
-            onClick={() => handleTabChange("profile")}
-          />
-        </CardContent>
-      </Card>
-      <LogoutButton />
-    </>
+   <>
+  {/* Section Label */}
+  <div className="px-3 text-xs font-semibold tracking-wide text-gray-500 uppercase mb-2">
+    Account
+  </div>
+
+  {/* Menu Card */}
+  <section className="bg-white rounded-lg shadow mb-4 overflow-hidden">
+    <div className="divide-y divide-gray-100">
+      <MenuItem
+        label="Profile"
+        description="Edit your personal information"
+        Icon={User}
+        onClick={() => handleTabChange("profile")}
+      />
+    </div>
+  </section>
+
+  {/* Logout Button */}
+  <LogoutButton />
+</>
+
   );
 };
 
