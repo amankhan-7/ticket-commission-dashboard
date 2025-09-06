@@ -167,8 +167,8 @@ export default function BusesPage() {
           stopOrder: bulkBusData.routeStops.length + 1,
           stopType:
             bulkBusData.routeStops.length === 0 ? "start" : "intermediate",
-          arrivalTime: "",
-          departureTime: "",
+          arrivalTime: null,
+          departureTime: null,
           haltDuration: 0,
           priceFromMain: 0,
           priceToMain: 0,
@@ -188,12 +188,12 @@ export default function BusesPage() {
     setBulkBusData({ ...bulkBusData, routeStops: updatedStops });
   };
 
-  const removeRouteStop = (index) => {
-    setBulkBusData({
-      ...bulkBusData,
-      routeStops: bulkBusData.routeStops.filter((_, i) => i !== index),
-    });
-  };
+  // const removeRouteStop = (index) => {
+  //   setBulkBusData({
+  //     ...bulkBusData,
+  //     routeStops: bulkBusData.routeStops.filter((_, i) => i !== index),
+  //   });
+  // };
 
   const [isBulkCreating, setIsBulkCreating] = useState(false);
 
@@ -304,14 +304,14 @@ export default function BusesPage() {
     e.preventDefault();
 
     const payload = {
-      busId: bulkBusData.busId, // must come from your buses list / selection
+      busId: selectedBusId,
       startDate: bulkBusData.startDate,
       endDate: bulkBusData.endDate,
       routeFrom: titleCase(bulkBusData.routeFrom),
       routeTo: titleCase(bulkBusData.routeTo),
       departureTime: bulkBusData.departureTime,
       arrivalTime: bulkBusData.arrivalTime,
-      basePrice: bulkBusData.price ? Number(bulkBusData.price) : null,
+      basePrice: bulkBusData.basePrice ? Number(bulkBusData.basePrice) : null,
       routeStops: bulkBusData.routeStops || [],
       frequency: bulkBusData.frequency || "daily",
       notes: bulkBusData.notes || "",
@@ -335,24 +335,20 @@ export default function BusesPage() {
 
     for (let field of requiredFields) {
       if (!payload[field]) {
+        console.error("Missing field:", field, "Value:", payload[field]);
         toast.error(`Please fill ${field}`);
-        return;
+        return; // exits before mutation
       }
     }
 
     try {
-      //Call mutation
-      const result = await addBulkBus(payload);
+      // Call mutation with unwrap directly
+      const res = await addBulkBus(payload).unwrap();
 
-      console.log("Bulk API raw result:", result);
+      console.log("Bulk API result:", res);
+      toast.success("Bulk routes created successfulliyy");
 
-      // Unwrap result to throw on error
-      await result.unwrap?.();
-
-      // Success feedback
-      toast.success("Bulk routes created successfully 🎉");
-
-      // Reset form after success
+      // Reset form
       setBulkBusData({
         busNumber: "",
         busName: "",
@@ -362,36 +358,19 @@ export default function BusesPage() {
         endDate: "",
         departureTime: "",
         arrivalTime: "",
-        price: "",
+        basePrice: "",
         totalSeats: "32",
         frequency: "daily",
         daysOfWeek: [],
         routeStops: [],
       });
+      setShowBulkForm(false);
     } catch (error) {
       console.error("Bulk submit failed:", error);
-
-      // Detailed RTK Query error info
-      if (error?.data) {
-        console.error("Server response:", error.data);
-        toast.error(error.data.message || "Server returned an error");
-      } else if (error?.status) {
-        console.error("Status code:", error.status);
-        toast.error(`Request failed with status ${error.status}`);
-      } else {
-        toast.error("Something went wrong. Please try again.");
-      }
+      toast.error(error?.data?.message || "Something went wrong");
     }
   };
 
-  const handleDelete = async (routeId) => {
-    try {
-      await deleteBus(routeId).unwrap();
-      console.log("Bus deleted successfully!");
-    } catch (err) {
-      console.error("Failed to delete bus: ", err);
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -418,11 +397,14 @@ export default function BusesPage() {
   };
   //hoisted casing of inputs
   function titleCase(str) {
-  if (typeof str !== 'string') return str;
-  return str.trim().replace(/\S+/gu, word =>
-    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-  );
-}
+    if (typeof str !== "string") return str;
+    return str
+      .trim()
+      .replace(
+        /\S+/gu,
+        (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      );
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
@@ -500,8 +482,10 @@ export default function BusesPage() {
                     className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
                   >
                     {/* Header */}
-                    <div  className={`flex justify-between items-center px-4 py-3.5 border-b border-gray-200 
-    ${bus.status === "active" ? "bg-[#d5ffe7]" : "bg-white"}`}>
+                    <div
+                      className={`flex justify-between items-center px-4 py-3.5 border-b border-gray-200 
+    ${bus.status === "active" ? "bg-[#d5ffe7]" : "bg-white"}`}
+                    >
                       <h2 className="text-base font-semibold text-gray-800">
                         {bus.busName}
                         <p className="font-light text-xs text-gray-500">
@@ -526,11 +510,25 @@ export default function BusesPage() {
                               endDate: "", // user must select
                               departureTime: "",
                               arrivalTime: "",
-                              price: bus.basePrice?.toString() || "",
+                              basePrice: bus.basePrice?.toString() || "",
                               totalSeats: bus.totalSeats?.toString() || "32",
                               frequency: "daily",
-                              daysOfWeek: [],
-                              routeStops: [],
+                              routeStops:
+                                bus.routeAliases?.map((alias, idx) => ({
+                                  stopType: alias.stopType || `Stop ${idx + 1}`,
+                                  name: alias.name || "",
+                                  district: alias.district || "",
+                                  arrivalTime: alias.arrivalTime
+                                    ? new Date(alias.arrivalTime)
+                                    : null,
+                                  departureTime: alias.departureTime
+                                    ? new Date(alias.departureTime)
+                                    : null,
+                                  haltDuration: alias.haltDuration || 0,
+                                  distanceFromMain: alias.distanceFromMain || 0,
+                                  distanceToMain: alias.distanceToMain || 0,
+                                  notes: alias.notes || "",
+                                })) || [],
                             });
                           }}
                           className="bg-[#007bff1a] hover:bg-[#007bff33] py-1.5 px-1.5 rounded-lg transition duration-200"
@@ -572,7 +570,7 @@ export default function BusesPage() {
                           <FaEdit className="text-[#004aad]" />
                         </button>
                         <button
-                          onClick={() => handleDelete(bus._id)}
+                          onClick={() => deleteBus(bus._id)}
                           title="Delete Bus"
                           className="bg-[#007bff1a] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
                         >
@@ -1170,9 +1168,9 @@ export default function BusesPage() {
                     Ticket Price (₹)
                   </label>
                   <input
-                    value={bulkBusData.price}
+                    value={bulkBusData.basePrice}
                     onChange={(e) =>
-                      setBulkBusData({ ...bulkBusData, price: e.target.value })
+                      setBulkBusData({ ...bulkBusData, basePrice: e.target.value })
                     }
                     placeholder="e.g., 500"
                     type="number"
@@ -1260,13 +1258,13 @@ export default function BusesPage() {
                       <h4 className="text-gray-800 font-semibold">
                         Stop {index + 1} ({stop.stopType})
                       </h4>
-                      <button
+                      {/* <button
                         type="button"
-                        onClick={() => removeRouteStop(index)}
-                        className="bg-[#ad0400] text-white px-3 py-1 rounded text-sm hover:bg-red-700 cursor-pointer"
+                        onClick={() => updateRouteStop(index)}
+                        className="bg-[#004aad] text-white px-3 py-1 rounded text-sm hover:bg-red-700 cursor-pointer"
                       >
-                        Remove
-                      </button>
+                        UpdateRoutes
+                      </button> */}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1349,7 +1347,9 @@ export default function BusesPage() {
                         </label>
                         <input
                           type="number"
-                           value={isNaN(stop.haltDuration) ? "" : stop.haltDuration}
+                          value={
+                            isNaN(stop.haltDuration) ? "" : stop.haltDuration
+                          }
                           onChange={(e) =>
                             updateRouteStop(
                               index,
@@ -1367,7 +1367,11 @@ export default function BusesPage() {
                         </label>
                         <input
                           type="number"
-                          vvalue={isNaN(stop.distanceFromMain) ? "" : stop.distanceFromMain}
+                          value={
+                            isNaN(stop.distanceFromMain)
+                              ? ""
+                              : stop.distanceFromMain
+                          }
                           onChange={(e) =>
                             updateRouteStop(
                               index,

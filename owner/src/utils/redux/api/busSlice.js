@@ -36,7 +36,7 @@ const busSlice = apiSlice.injectEndpoints({
         permitExpiry,
         yearOfManufacture,
       }) => ({
-        url: "/buses/routes/bulk",
+        url: "/buses",
         method: "POST",
         body: {
           busNumber,
