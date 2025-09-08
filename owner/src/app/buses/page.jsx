@@ -5,10 +5,8 @@ import {
   FaEdit,
   FaTrash,
   FaRoute,
-  FaClock,
   FaChair,
   FaPlus,
-  FaExchangeAlt,
   FaRupeeSign,
   FaBus,
   FaIdCard,
@@ -438,8 +436,8 @@ export default function BusesPage() {
                 <FaPlus />
                 Add Buses
               </button>
-{/* 
-              <button
+
+              {/* <button
                 onClick={handleOpenBulkForm}
                 className="flex items-center text-xs gap-2 bg-[#004aad] text-white h-8 px-4 py-2 rounded hover:bg-[#0056b3] transition cursor-pointer"
               >
