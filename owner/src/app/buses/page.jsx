@@ -73,15 +73,7 @@ export default function BusesPage() {
     useGetDriversQuery();
   const [assignDriver, { isLoading: isAssigning }] = useAssignDriverMutation();
 
-  // const handleSwapRoute = () => {
-  //   setBusData((prev) => {
-  //     return {
-  //       ...prev,
-  //       routeFrom: prev.baseRouteTo,
-  //       routeTo: prev.baseRouteFrom,
-  //     };
-  //   });
-  // };
+  //pagination of bus Card
   const USERS_PER_PAGE = 6;
   const totalPages = Math.ceil(buses.length / USERS_PER_PAGE);
   const startIndex = (currentPage - 1) * USERS_PER_PAGE;
@@ -122,10 +114,6 @@ export default function BusesPage() {
   const [busData, setBusData] = useState({
     busNumber: "",
     busName: "",
-    date: "",
-    departureTime: "",
-    numberOfSeats: "",
-    ticketPrice: "",
     baseRouteFrom: "",
     baseRouteTo: "",
     basePrice: "",
@@ -149,7 +137,7 @@ export default function BusesPage() {
     endDate: "",
     departureTime: "",
     arrivalTime: "",
-    price: "",
+    basePrice: "",
     totalSeats: "32",
     frequency: "daily",
     daysOfWeek: [],
@@ -323,7 +311,7 @@ export default function BusesPage() {
 
     // Required fields check
     const requiredFields = [
-      "busId",
+      // "busId",
       "startDate",
       "endDate",
       "routeFrom",
@@ -435,14 +423,14 @@ export default function BusesPage() {
         </div>
 
         {/* Top bar with title and add button */}
-        <div className=" max-w-5xl mx-auto w-full mb-4">
+        <div className=" max-w-5xl mx-auto w-full mb-8">
           <div className="flex justify-between items-center gap-3">
-            <h2 className="text-[#004aad] text-[22px] font-semibold">
+            <h2 className="text-[#004aad] text-[22px] font-semibold pl-1">
               Your Buses
             </h2>
 
             {/* Make this flex so the buttons sit next to each other */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 pr-1">
               <button
                 onClick={handleOpenBusForm}
                 className="flex items-center text-xs gap-2 bg-[#004aad] text-white h-8 px-4 py-2 rounded hover:bg-[#0056b3] transition cursor-pointer"
@@ -450,14 +438,14 @@ export default function BusesPage() {
                 <FaPlus />
                 Add Buses
               </button>
-
+{/* 
               <button
                 onClick={handleOpenBulkForm}
                 className="flex items-center text-xs gap-2 bg-[#004aad] text-white h-8 px-4 py-2 rounded hover:bg-[#0056b3] transition cursor-pointer"
               >
                 <FaPlus />
                 Add Bulk Route
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -484,7 +472,7 @@ export default function BusesPage() {
                     {/* Header */}
                     <div
                       className={`flex justify-between items-center px-4 py-3.5 border-b border-gray-200 
-    ${bus.status === "active" ? "bg-[#d5ffe7]" : "bg-white"}`}
+                           ${bus.status === "active" ? "bg-[#d5ffe7]" : "bg-white"}`}
                     >
                       <h2 className="text-base font-semibold text-gray-800">
                         {bus.busName}
@@ -494,14 +482,14 @@ export default function BusesPage() {
                       </h2>
                       <div className="flex items-center gap-2 text-[#004aad]">
                         <button
-                          title="Edit Bus"
+                          title="Route the bus"
                           onClick={() => {
                             setShowBulkForm(true);
                             setEditMode(true);
                             setSelectedBusId(bus._id);
                             handleOpenBulkForm();
                             setBulkBusData({
-                              busId: bus._id || "",
+                              busId: bus._id || selectedBusId ||"",
                               busNumber: bus.busNumber || "",
                               busName: bus.busName || "",
                               routeFrom: bus.baseRouteFrom || "",
@@ -547,9 +535,6 @@ export default function BusesPage() {
                               busName: bus.busName || "",
                               baseRouteFrom: bus.baseRouteFrom || "",
                               baseRouteTo: bus.baseRouteTo || "",
-                              ticketPrice: bus.ticketPrice?.toString() || "",
-                              departureTime: bus.departureTime || "",
-                              arrivalTime: bus.arrivalTime || "",
                               totalSeats: bus.totalSeats?.toString() || "",
                               seatingCapacity:
                                 bus.seatingCapacity?.toString() || "",
@@ -706,13 +691,13 @@ export default function BusesPage() {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Bus Name */}
+              {/*1. Bus Name */}
               <div>
                 <label
                   htmlFor="busName"
                   className="block mb-2 text-sm font-medium text-gray-700"
                 >
-                  Bus Name
+                Bus Name
                 </label>
                 <input
                   id="busName"
@@ -725,7 +710,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Bus Number */}
+              {/*2. Bus Number */}
               <div>
                 <label
                   htmlFor="busNumber"
@@ -744,7 +729,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Route From */}
+              {/*3. Route From */}
               <div>
                 <label
                   htmlFor="baseRouteFrom"
@@ -763,7 +748,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Route To */}
+              {/*4. Route To */}
               <div>
                 <label
                   htmlFor="baseRouteTo"
@@ -782,7 +767,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Total Seats */}
+              {/*5. Total Seats */}
               <div>
                 <label
                   htmlFor="totalSeats"
@@ -801,7 +786,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Seating Capacity */}
+              {/*6. Seating Capacity */}
               <div>
                 <label
                   htmlFor="seatingCapacity"
@@ -820,7 +805,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Base Price */}
+              {/*7. Base Price */}
               <div>
                 <label
                   htmlFor="basePrice"
@@ -839,7 +824,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Bus Type */}
+              {/*8. Bus Type */}
               <div>
                 <label
                   htmlFor="busType"
@@ -861,7 +846,7 @@ export default function BusesPage() {
                 </select>
               </div>
 
-              {/* Amenities */}
+              {/*9. Amenities */}
               <div>
                 <label
                   htmlFor="amenities"
@@ -881,7 +866,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Registration Number */}
+              {/*10. Registration Number */}
               <div>
                 <label
                   htmlFor="registrationNumber"
@@ -900,7 +885,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Insurance Expiry */}
+              {/*11. Insurance Expiry */}
               <div>
                 <label
                   htmlFor="insuranceExpiry"
@@ -918,7 +903,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Permit Expiry */}
+              {/*12. Permit Expiry */}
               <div>
                 <label
                   htmlFor="permitExpiry"
@@ -936,7 +921,7 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Year of Manufacture */}
+              {/*13. Year of Manufacture */}
               <div>
                 <label
                   htmlFor="yearOfManufacture"
