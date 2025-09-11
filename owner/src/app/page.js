@@ -1,6 +1,6 @@
 "use client";
 
-import BottomNav from "@/components/UI/BottomNav";
+import BottomNav from "@/components/ui/BottomNav";
 import { FaBus, FaTicketAlt, FaPlus, FaCircleNotch } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { useGetTodaySeatsBookedQuery } from "@/utils/redux/api/busSlice";

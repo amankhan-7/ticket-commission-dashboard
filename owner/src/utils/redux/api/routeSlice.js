@@ -1,6 +1,7 @@
 import { apiSlice } from "./apiSlice";
 
 export const routeApiSlice = apiSlice.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     // Route CRUD operations
     createRoute: builder.mutation({
@@ -173,6 +174,42 @@ export const routeApiSlice = apiSlice.injectEndpoints({
       ],
       transformResponse: (res) => res.data,
     }),
+
+    // Get all routes for a specific bus
+    getBusRoutes: builder.query({
+      query: ({ busId, page = 1, limit = 10, status } = {}) => {
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: limit.toString(),
+        });
+        if (status) params.append("status", status);
+
+        return {
+          url: `/buses/${busId}/routes?${params.toString()}`,
+          method: "GET",
+        };
+      },
+      providesTags: (result, error, { busId }) => [
+        { type: "BusRoutes", id: busId },
+        { type: "BusRoutes", id: "LIST" },
+      ],
+      transformResponse: (res) => res.data,
+    }),
+
+    // Update multiple routes for a bus
+    updateBusRoutes: builder.mutation({
+      query: ({ busId, routes }) => ({
+        url: `/buses/${busId}/routes`,
+        method: "PUT",
+        body: { routes },
+      }),
+      invalidatesTags: (result, error, { busId }) => [
+        { type: "BusRoutes", id: busId },
+        { type: "BusRoutes", id: "LIST" },
+        { type: "Route", id: "LIST" },
+      ],
+      transformResponse: (res) => res.data,
+    }),
   }),
 });
 
@@ -188,4 +225,6 @@ export const {
   useAddRouteStopMutation,
   useUpdateRouteStopMutation,
   useDeleteRouteStopMutation,
+  useGetBusRoutesQuery,
+  useUpdateBusRoutesMutation,
 } = routeApiSlice;

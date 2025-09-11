@@ -1,6 +1,6 @@
 "use client";
 
-import BottomNav from "@/components/UI/BottomNav";
+import BottomNav from "@/components/ui/BottomNav";
 import { FaSignOutAlt } from "react-icons/fa";
 import { useState } from "react";
 import { useSelector } from "react-redux";

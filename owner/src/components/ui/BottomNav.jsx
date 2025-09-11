@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FaHome, FaBus, FaUser, FaCog } from "react-icons/fa";
+import { FaHome, FaBus, FaUser, FaCog, FaTicketAlt } from "react-icons/fa";
 import clsx from "clsx";
 
 const navItems = [
   { label: "Home", icon: FaHome, href: "/" },
   { label: "Buses", icon: FaBus, href: "/buses" },
+  { label: "Offline Booking", icon: FaTicketAlt, href: "/offline-booking" },
   { label: "Drivers", icon: FaUser, href: "/drivers" },
   { label: "Settings", icon: FaCog, href: "/settings" },
 ];

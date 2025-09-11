@@ -1,6 +1,6 @@
 "use client";
 
-import BottomNav from "@/components/UI/BottomNav";
+import BottomNav from "@/components/ui/BottomNav";
 import { useState } from "react";
 import {
   FaTrash,

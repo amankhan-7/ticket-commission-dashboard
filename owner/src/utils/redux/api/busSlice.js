@@ -261,6 +261,69 @@ const busSlice = apiSlice.injectEndpoints({
     //   ],
     //   transformResponse: (res) => res.data,
     // }),
+
+    // Offline Booking Endpoints
+    getOwnerBusesForBooking: builder.query({
+      query: () => ({
+        url: "/offline-booking/buses",
+        method: "GET",
+      }),
+      providesTags: ["OwnerBuses"],
+      transformResponse: (response) => response.data.buses,
+    }),
+
+    getBusStops: builder.query({
+      query: (busId) => ({
+        url: `/offline-booking/bus/${busId}/stops`,
+        method: "GET",
+      }),
+      providesTags: ["BusStops"],
+      transformResponse: (response) => response.data.stops,
+    }),
+
+    searchBusRoutes: builder.mutation({
+      query: ({ busId, routeFrom, routeTo, journeyDate }) => ({
+        url: "/offline-booking/search-routes",
+        method: "POST",
+        body: { busId, routeFrom, routeTo, journeyDate },
+      }),
+      transformResponse: (response) => response.data,
+    }),
+
+    getRouteSeatLayout: builder.query({
+      query: ({ routeId, journeyDate }) => ({
+        url: `/offline-booking/route/${routeId}/seat-layout/${journeyDate}`,
+        method: "GET",
+      }),
+      transformResponse: (response) => response.data,
+    }),
+
+    validateOwnerPin: builder.mutation({
+      query: ({ pin }) => ({
+        url: "/offline-booking/validate-pin",
+        method: "POST",
+        body: { pin },
+      }),
+      transformResponse: (response) => response.data,
+    }),
+
+    createOfflineBooking: builder.mutation({
+      query: (bookingData) => ({
+        url: "/offline-booking/create",
+        method: "POST",
+        body: bookingData,
+      }),
+      transformResponse: (response) => response.data,
+    }),
+
+    getOfflineBookingHistory: builder.query({
+      query: ({ page = 1, limit = 10 }) => ({
+        url: `/offline-booking/history?page=${page}&limit=${limit}`,
+        method: "GET",
+      }),
+      providesTags: ["OfflineBookings"],
+      transformResponse: (response) => response.data,
+    }),
   }),
 });
 
@@ -277,6 +340,13 @@ export const {
   useAddRouteStopMutation,
   useUpdateRouteStopMutation,
   useDeleteRouteStopMutation,
+  useGetOwnerBusesForBookingQuery,
+  useGetBusStopsQuery,
+  useSearchBusRoutesMutation,
+  useGetRouteSeatLayoutQuery,
+  useValidateOwnerPinMutation,
+  useCreateOfflineBookingMutation,
+  useGetOfflineBookingHistoryQuery,
 } = busSlice;
 
 export default busSlice;

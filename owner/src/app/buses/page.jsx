@@ -28,6 +28,10 @@ import {
   useBulkAddBusMutation,
 } from "@/utils/redux/api/busSlice";
 import {
+  useGetBusRoutesQuery,
+  useUpdateBusRoutesMutation,
+} from "@/utils/redux/api/routeSlice";
+import {
   useGetDriversQuery,
   useAssignDriverMutation,
 } from "@/utils/redux/api/driverSlice";
@@ -47,6 +51,9 @@ export default function BusesPage() {
   const [selectedBusId, setSelectedBusId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedDrivers, setSelectedDrivers] = useState(null);
+  const [showRouteEditor, setShowRouteEditor] = useState(false);
+  const [editingRoutes, setEditingRoutes] = useState([]);
+  const routeEditorRef = useRef(null);
 
   const dispatch = useDispatch();
   const router = useRouter();
@@ -71,7 +78,12 @@ export default function BusesPage() {
     useGetDriversQuery();
   const [assignDriver, { isLoading: isAssigning }] = useAssignDriverMutation();
 
-  //pagination of bus Card
+  const { data: busRoutesData, isLoading: routesLoading } = useGetBusRoutesQuery(
+    { busId: selectedBusId },
+    { skip: !selectedBusId || !showRouteEditor }
+  );
+  const [updateBusRoutes, { isLoading: isUpdatingRoutes }] = useUpdateBusRoutesMutation();
+
   const USERS_PER_PAGE = 6;
   const totalPages = Math.ceil(buses.length / USERS_PER_PAGE);
   const startIndex = (currentPage - 1) * USERS_PER_PAGE;
@@ -83,7 +95,6 @@ export default function BusesPage() {
       ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
       : "SB";
 
-  // Load on mount - same as you have
   useEffect(() => {
     async function loadSelectedDrivers() {
       const savedDrivers = await safeLocalStorage.getItem(
@@ -95,14 +106,12 @@ export default function BusesPage() {
     loadSelectedDrivers();
   }, []);
 
-  // Save only when selectedDrivers changes
   useEffect(() => {
     if (selectedDrivers !== null) {
       safeLocalStorage.setItem("selectedDrivers", selectedDrivers);
     }
   }, [selectedDrivers]);
 
-  // handle showing form based on search param
   useEffect(() => {
     if (searchParams.get("add") === "true") {
       setShowForm(true);
@@ -125,7 +134,6 @@ export default function BusesPage() {
     yearOfManufacture: "",
   });
 
-  // Bulk creation state
   const [bulkBusData, setBulkBusData] = useState({
     busNumber: "",
     busName: "",
@@ -174,14 +182,134 @@ export default function BusesPage() {
     setBulkBusData({ ...bulkBusData, routeStops: updatedStops });
   };
 
-  // const removeRouteStop = (index) => {
-  //   setBulkBusData({
-  //     ...bulkBusData,
-  //     routeStops: bulkBusData.routeStops.filter((_, i) => i !== index),
-  //   });
-  // };
 
   const [isBulkCreating, setIsBulkCreating] = useState(false);
+
+  const safeParseDate = (dateValue) => {
+    if (!dateValue) return null;
+    if (dateValue instanceof Date) return dateValue;
+    if (typeof dateValue === 'string') {
+      const parsed = new Date(dateValue);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    }
+    return null;
+  };
+
+  const handleEditRoutes = (busId) => {
+    setSelectedBusId(busId);
+    setShowRouteEditor(true);
+    setEditingRoutes([]);
+    
+    setTimeout(() => {
+      routeEditorRef.current?.scrollIntoView({ 
+        behavior: "smooth", 
+        block: "start" 
+      });
+    }, 100);
+  };
+
+  const handleRouteChange = (routeIndex, field, value) => {
+    const updatedRoutes = [...editingRoutes];
+    if (!updatedRoutes[routeIndex]) {
+      updatedRoutes[routeIndex] = {};
+    }
+    updatedRoutes[routeIndex][field] = value;
+    setEditingRoutes(updatedRoutes);
+  };
+
+  const handleRouteStopChange = (routeIndex, stopIndex, field, value) => {
+    const updatedRoutes = [...editingRoutes];
+    if (!updatedRoutes[routeIndex]) {
+      updatedRoutes[routeIndex] = { routeStops: [] };
+    }
+    if (!updatedRoutes[routeIndex].routeStops) {
+      updatedRoutes[routeIndex].routeStops = [];
+    }
+    if (!updatedRoutes[routeIndex].routeStops[stopIndex]) {
+      updatedRoutes[routeIndex].routeStops[stopIndex] = {};
+    }
+    updatedRoutes[routeIndex].routeStops[stopIndex][field] = value;
+    setEditingRoutes(updatedRoutes);
+  };
+
+  const addRouteEditorStop = (routeIndex) => {
+    const updatedRoutes = [...editingRoutes];
+    if (!updatedRoutes[routeIndex]) {
+      updatedRoutes[routeIndex] = { routeStops: [] };
+    }
+    if (!updatedRoutes[routeIndex].routeStops) {
+      updatedRoutes[routeIndex].routeStops = [];
+    }
+    updatedRoutes[routeIndex].routeStops.push({
+      name: "",
+      district: "",
+      stopOrder: updatedRoutes[routeIndex].routeStops.length + 1,
+      stopType: "intermediate",
+      arrivalTime: null,
+      departureTime: null,
+      haltDuration: 0,
+      priceFromMain: 0,
+      priceToMain: 0,
+      customPrice: null,
+      distanceFromMain: 0,
+      distanceToMain: 0,
+      facilities: [],
+      notes: "",
+    });
+    setEditingRoutes(updatedRoutes);
+  };
+
+  const removeRouteStop = (routeIndex, stopIndex) => {
+    const updatedRoutes = [...editingRoutes];
+    if (updatedRoutes[routeIndex]?.routeStops) {
+      updatedRoutes[routeIndex].routeStops.splice(stopIndex, 1);
+      updatedRoutes[routeIndex].routeStops.forEach((stop, index) => {
+        stop.stopOrder = index + 1;
+      });
+    }
+    setEditingRoutes(updatedRoutes);
+  };
+
+  const handleSaveRoutes = async () => {
+    try {
+      const routesToUpdate = editingRoutes.filter(route => route.routeId);
+      if (routesToUpdate.length === 0) {
+        toast.error("No routes to update");
+        return;
+      }
+
+      await updateBusRoutes({
+        busId: selectedBusId,
+        routes: routesToUpdate,
+      }).unwrap();
+
+      toast.success("Routes updated successfully");
+      setShowRouteEditor(false);
+      setEditingRoutes([]);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      console.error("Failed to update routes:", error);
+      toast.error(error?.data?.message || "Failed to update routes");
+    }
+  };
+
+  useEffect(() => {
+    if (busRoutesData?.routes && showRouteEditor) {
+      setEditingRoutes(busRoutesData.routes.map(route => ({
+        routeId: route._id,
+        routeFrom: route.routeFrom,
+        routeTo: route.routeTo,
+        departureTime: safeParseDate(route.departureTime),
+        arrivalTime: safeParseDate(route.arrivalTime),
+        basePrice: route.basePrice,
+        routeStops: (route.routeStops || []).map(stop => ({
+          ...stop,
+          arrivalTime: safeParseDate(stop.arrivalTime),
+          departureTime: safeParseDate(stop.departureTime),
+        })),
+      })));
+    }
+  }, [busRoutesData, showRouteEditor]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -381,7 +509,6 @@ export default function BusesPage() {
       showFormRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 100);
   };
-  //hoisted casing of inputs
   function titleCase(str) {
     if (typeof str !== "string") return str;
     return str
@@ -397,7 +524,6 @@ export default function BusesPage() {
       <BottomNav />
 
       <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
-        {/* Header */}
         <div className="bg-white p-4 mt-4 md:mt-8 rounded-lg shadow mb-6 max-w-5xl mx-auto w-full flex flex-col md:flex-row md:justify-between">
           <h1 className="text-xl font-semibold text-[#004aad] mb-4 md:mb-0">
             Buses
@@ -420,14 +546,12 @@ export default function BusesPage() {
           </div>
         </div>
 
-        {/* Top bar with title and add button */}
         <div className=" max-w-5xl mx-auto w-full mb-8">
           <div className="flex justify-between items-center gap-3">
             <h2 className="text-[#004aad] text-[22px] font-semibold pl-1">
               Your Buses
             </h2>
 
-            {/* Make this flex so the buttons sit next to each other */}
             <div className="flex gap-2 pr-1">
               <button
                 onClick={handleOpenBusForm}
@@ -437,18 +561,10 @@ export default function BusesPage() {
                 Add Buses
               </button>
 
-              {/* <button
-                onClick={handleOpenBulkForm}
-                className="flex items-center text-xs gap-2 bg-[#004aad] text-white h-8 px-4 py-2 rounded hover:bg-[#0056b3] transition cursor-pointer"
-              >
-                <FaPlus />
-                Add Bulk Route
-              </button> */}
             </div>
           </div>
         </div>
 
-        {/* Bus Cards Grid */}
         <div className="max-w-5xl mx-auto w-full animate-fadeInUp">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {isLoading
@@ -467,7 +583,6 @@ export default function BusesPage() {
                     key={bus._id}
                     className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
                   >
-                    {/* Header */}
                     <div
                       className={`flex justify-between items-center px-4 py-3.5 border-b border-gray-200 
                            ${bus.status === "active" ? "bg-[#d5ffe7]" : "bg-white"}`}
@@ -480,7 +595,7 @@ export default function BusesPage() {
                       </h2>
                       <div className="flex items-center gap-2 text-[#004aad]">
                         <button
-                          title="Route the bus"
+                          title="Add New Route"
                           onClick={() => {
                             setShowBulkForm(true);
                             setEditMode(true);
@@ -520,6 +635,13 @@ export default function BusesPage() {
                           className="bg-[#007bff1a] hover:bg-[#007bff33] py-1.5 px-1.5 rounded-lg transition duration-200"
                         >
                           <FaPlus className="text-[#004aad]" />
+                        </button>
+                        <button
+                          title="Edit Routes"
+                          onClick={() => handleEditRoutes(bus._id)}
+                          className="bg-[#007bff1a] hover:bg-[#007bff33] py-1.5 px-1.5 rounded-lg transition duration-200"
+                        >
+                          <FaRoute className="text-[#004aad]" />
                         </button>
                         <button
                           title="Edit Bus"
@@ -562,7 +684,6 @@ export default function BusesPage() {
                       </div>
                     </div>
 
-                    {/* Bus Details */}
                     <div className="flex flex-col justify-between gap-2 px-4 py-4 border-b border-gray-200 text-sm text-gray-700">
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FaRoute className="text-[#004aad]" />
@@ -570,62 +691,45 @@ export default function BusesPage() {
                           {bus.baseRouteFrom} → {bus.baseRouteTo}
                         </span>
                       </div>
-                      {/* <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <FaClock className="text-[#004aad]" />
-                        <span>
-                          {bus.departureTime} - {bus.arrivalTime}
-                        </span>
-                      </div> */}
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FaChair className="text-[#004aad]" />
                         <span>{bus.totalSeats}</span>
                       </div>
-                      {/* <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <FaTicketAlt className="text-[#004aad]" />
-                        <span>{bus.seatsBooked}</span>
-                      </div> */}
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FaRupeeSign className="text-[#004aad]" />
                         <span>{bus.basePrice}</span>
                       </div>
-                      {/* Bus Type */}
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FaBus className="text-[#004aad]" />
                         <span>{bus.busType}</span>
                       </div>
 
-                      {/* Amenities */}
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <Wifi className="text-[#004aad]" size={16} />
                         <span>{bus.amenities?.join(", ")}</span>
                       </div>
 
-                      {/* Registration Number */}
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FaIdCard className="text-[#004aad]" />
                         <span>{bus.registrationNumber}</span>
                       </div>
 
-                      {/* Insurance Expiry */}
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <FileText className="text-[#004aad]" size={16} />
                         <span>{bus.insuranceExpiry}</span>
                       </div>
 
-                      {/* Permit Expiry */}
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <ClipboardCheck className="text-[#004aad]" size={16} />
                         <span>{bus.permitExpiry}</span>
                       </div>
 
-                      {/* Year of Manufacture */}
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <Calendar className="text-[#004aad]" size={16} />
                         <span>{bus.yearOfManufacture}</span>
                       </div>
                     </div>
 
-                    {/* Driver Dropdown */}
                     <div className="flex items-center justify-between px-4 py-3 bg-[#f8f9fa] text-sm text-gray-700">
                       <label className="font-medium">Driver:</label>
                       <select
@@ -660,7 +764,6 @@ export default function BusesPage() {
                   </div>
                 ))}
           </div>
-          {/* Pagination */}
           <div className="flex justify-center items-center gap-2 py-4 flex-wrap">
             {Array.from({ length: totalPages }, (_, index) => (
               <button
@@ -678,7 +781,6 @@ export default function BusesPage() {
           </div>
         </div>
 
-        {/* FORM SECTION */}
         {showForm && (
           <section
             className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp"
@@ -689,7 +791,6 @@ export default function BusesPage() {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/*1. Bus Name */}
               <div>
                 <label
                   htmlFor="busName"
@@ -708,7 +809,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*2. Bus Number */}
               <div>
                 <label
                   htmlFor="busNumber"
@@ -727,7 +827,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*3. Route From */}
               <div>
                 <label
                   htmlFor="baseRouteFrom"
@@ -746,7 +845,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*4. Route To */}
               <div>
                 <label
                   htmlFor="baseRouteTo"
@@ -765,7 +863,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*5. Total Seats */}
               <div>
                 <label
                   htmlFor="totalSeats"
@@ -784,7 +881,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*6. Seating Capacity */}
               <div>
                 <label
                   htmlFor="seatingCapacity"
@@ -803,7 +899,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*7. Base Price */}
               <div>
                 <label
                   htmlFor="basePrice"
@@ -822,7 +917,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*8. Bus Type */}
               <div>
                 <label
                   htmlFor="busType"
@@ -844,7 +938,6 @@ export default function BusesPage() {
                 </select>
               </div>
 
-              {/*9. Amenities */}
               <div>
                 <label
                   htmlFor="amenities"
@@ -864,7 +957,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*10. Registration Number */}
               <div>
                 <label
                   htmlFor="registrationNumber"
@@ -883,7 +975,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*11. Insurance Expiry */}
               <div>
                 <label
                   htmlFor="insuranceExpiry"
@@ -901,7 +992,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*12. Permit Expiry */}
               <div>
                 <label
                   htmlFor="permitExpiry"
@@ -919,7 +1009,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/*13. Year of Manufacture */}
               <div>
                 <label
                   htmlFor="yearOfManufacture"
@@ -940,7 +1029,6 @@ export default function BusesPage() {
                 />
               </div>
 
-              {/* Submit Button */}
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
@@ -960,7 +1048,6 @@ export default function BusesPage() {
           </section>
         )}
 
-        {/* Bulk Route Creation Form */}
         {showBulkForm && (
           <section
             className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp"
@@ -975,7 +1062,6 @@ export default function BusesPage() {
             </p>
 
             <form onSubmit={handleBulkSubmit} className="space-y-6">
-              {/* Basic Bus Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
@@ -1013,7 +1099,6 @@ export default function BusesPage() {
                 </div>
               </div>
 
-              {/* Route Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
@@ -1051,7 +1136,6 @@ export default function BusesPage() {
                 </div>
               </div>
 
-              {/* Schedule Information */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
@@ -1085,13 +1169,12 @@ export default function BusesPage() {
                     className="w-full p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
                   />
                 </div>
-                {/* Departure Time */}
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
                     Departure Time
                   </label>
                   <DatePicker
-                    selected={bulkBusData.departureTime}
+                    selected={safeParseDate(bulkBusData.departureTime)}
                     onChange={(time) =>
                       setBulkBusData({ ...bulkBusData, departureTime: time })
                     }
@@ -1104,13 +1187,12 @@ export default function BusesPage() {
                     className="w-auto md:w-80 p-2 border placeholder-gray-500 border-slate-200 rounded-lg text-sm font-normal focus:outline focus:outline-[#007bff33] focus:ring focus:ring-[#004aad] text-gray-700"
                   />
                 </div>
-                {/* Arrival Time */}
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
                     Arrival Time
                   </label>
                   <DatePicker
-                    selected={bulkBusData.arrivalTime}
+                    selected={safeParseDate(bulkBusData.arrivalTime)}
                     onChange={(time) =>
                       setBulkBusData({ ...bulkBusData, arrivalTime: time })
                     }
@@ -1125,7 +1207,6 @@ export default function BusesPage() {
                 </div>
               </div>
 
-              {/* Frequency and Pricing */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
@@ -1179,7 +1260,6 @@ export default function BusesPage() {
                 </div>
               </div>
 
-              {/* Weekly Frequency Options */}
               {bulkBusData.frequency === "weekly" && (
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
@@ -1226,7 +1306,6 @@ export default function BusesPage() {
                   </div>
                 </div>
               )}
-              {/* Route Stops (Optional) *****************************************************************/}
               <div className="space-y-4">
                 <label className="block text-gray-700 font-medium">
                   Route Stops (Optional)
@@ -1284,9 +1363,7 @@ export default function BusesPage() {
                           Arrival Time
                         </label>
                         <DatePicker
-                          selected={
-                            stop.arrivalTime ? new Date(stop.arrivalTime) : null
-                          }
+                          selected={safeParseDate(stop.arrivalTime)}
                           onChange={(time) =>
                             updateRouteStop(index, "arrivalTime", time)
                           }
@@ -1300,17 +1377,12 @@ export default function BusesPage() {
                         />
                       </div>
 
-                      {/* Departure Time */}
                       <div>
                         <label className="block text-sm text-gray-600">
                           Departure Time
                         </label>
                         <DatePicker
-                          selected={
-                            stop.departureTime
-                              ? new Date(stop.departureTime)
-                              : null
-                          }
+                          selected={safeParseDate(stop.departureTime)}
                           onChange={(time) =>
                             updateRouteStop(index, "departureTime", time)
                           }
@@ -1413,7 +1485,6 @@ export default function BusesPage() {
                 </button>
               </div>
 
-              {/* Submit Button */}
               <div className="flex justify-center md:justify-end w-full gap-2">
                 <button
                   type="button"
@@ -1433,6 +1504,223 @@ export default function BusesPage() {
                 </button>
               </div>
             </form>
+          </section>
+        )}
+
+        {showRouteEditor && (
+          <section 
+            ref={routeEditorRef}
+            className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-6xl mx-auto w-full animate-fadeInUp"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-[#004aad] text-lg font-semibold">
+                Edit Routes for {busRoutesData?.bus?.busName}
+              </h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowRouteEditor(false);
+                    setEditingRoutes([]);
+                    // Scroll back to top when closing route editor
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveRoutes}
+                  disabled={isUpdatingRoutes}
+                  className="px-6 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition disabled:opacity-50"
+                >
+                  {isUpdatingRoutes ? "Saving..." : "Save Routes"}
+                </button>
+              </div>
+            </div>
+
+            {routesLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#004aad]"></div>
+              </div>
+            ) : editingRoutes.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No routes found for this bus.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {editingRoutes.map((route, routeIndex) => (
+                  <div key={route.routeId || routeIndex} className="border border-gray-300 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Route {routeIndex + 1}: {route.routeFrom} → {route.routeTo}
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          From
+                        </label>
+                        <input
+                          type="text"
+                          value={route.routeFrom || ""}
+                          onChange={(e) => handleRouteChange(routeIndex, "routeFrom", e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#004aad]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          To
+                        </label>
+                        <input
+                          type="text"
+                          value={route.routeTo || ""}
+                          onChange={(e) => handleRouteChange(routeIndex, "routeTo", e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#004aad]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Departure Time
+                        </label>
+                        <DatePicker
+                          selected={safeParseDate(route.departureTime)}
+                          onChange={(time) => handleRouteChange(routeIndex, "departureTime", time)}
+                          showTimeSelect
+                          showTimeSelectOnly
+                          timeIntervals={15}
+                          timeCaption="Time"
+                          dateFormat="h:mm aa"
+                          className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#004aad]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Arrival Time
+                        </label>
+                        <DatePicker
+                          selected={safeParseDate(route.arrivalTime)}
+                          onChange={(time) => handleRouteChange(routeIndex, "arrivalTime", time)}
+                          showTimeSelect
+                          showTimeSelectOnly
+                          timeIntervals={15}
+                          timeCaption="Time"
+                          dateFormat="h:mm aa"
+                          className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#004aad]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Base Price
+                        </label>
+                        <input
+                          type="number"
+                          value={route.basePrice || ""}
+                          onChange={(e) => handleRouteChange(routeIndex, "basePrice", parseFloat(e.target.value))}
+                          className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#004aad]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Route Stops */}
+                    <div className="mt-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="text-md font-semibold text-gray-700">Route Stops</h4>
+                        <button
+                          type="button"
+                          onClick={() => addRouteEditorStop(routeIndex)}
+                          className="px-3 py-1 bg-[#004aad] text-white rounded text-sm hover:bg-[#00348a] transition"
+                        >
+                          + Add Stop
+                        </button>
+                      </div>
+
+                      {route.routeStops?.map((stop, stopIndex) => (
+                        <div key={stopIndex} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-gray-600">
+                              Stop {stopIndex + 1} ({stop.stopType})
+                            </span>
+                            {stop.stopType !== "start" && stop.stopType !== "end" && (
+                              <button
+                                type="button"
+                                onClick={() => removeRouteStop(routeIndex, stopIndex)}
+                                className="text-red-600 hover:text-red-800 text-sm"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Stop Name</label>
+                              <input
+                                type="text"
+                                value={stop.name || ""}
+                                onChange={(e) => handleRouteStopChange(routeIndex, stopIndex, "name", e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#004aad]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">District</label>
+                              <input
+                                type="text"
+                                value={stop.district || ""}
+                                onChange={(e) => handleRouteStopChange(routeIndex, stopIndex, "district", e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#004aad]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Arrival Time</label>
+                              <DatePicker
+                                selected={safeParseDate(stop.arrivalTime)}
+                                onChange={(time) => handleRouteStopChange(routeIndex, stopIndex, "arrivalTime", time)}
+                                showTimeSelect
+                                showTimeSelectOnly
+                                timeIntervals={15}
+                                timeCaption="Time"
+                                dateFormat="h:mm aa"
+                                className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#004aad]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Departure Time</label>
+                              <DatePicker
+                                selected={safeParseDate(stop.departureTime)}
+                                onChange={(time) => handleRouteStopChange(routeIndex, stopIndex, "departureTime", time)}
+                                showTimeSelect
+                                showTimeSelectOnly
+                                timeIntervals={15}
+                                timeCaption="Time"
+                                dateFormat="h:mm aa"
+                                className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#004aad]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Price From Main</label>
+                              <input
+                                type="number"
+                                value={stop.priceFromMain || ""}
+                                onChange={(e) => handleRouteStopChange(routeIndex, stopIndex, "priceFromMain", parseFloat(e.target.value))}
+                                className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#004aad]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Price To Main</label>
+                              <input
+                                type="number"
+                                value={stop.priceToMain || ""}
+                                onChange={(e) => handleRouteStopChange(routeIndex, stopIndex, "priceToMain", parseFloat(e.target.value))}
+                                className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#004aad]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
       </main>

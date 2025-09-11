@@ -8,6 +8,15 @@ const baseQuery = fetchBaseQuery({
   credentials: "include",
   prepareHeaders: (headers, { getState }) => {
     headers.set("Content-Type", "application/json");
+    
+    // Get user from Redux state
+    const state = getState();
+    const user = state.auth?.user;
+    
+    if (user?.token) {
+      headers.set("Authorization", `Bearer ${user.token}`);
+    }
+    
     // headers.set("User-Type", "busOwner"); 
     return headers;
   },
@@ -56,6 +65,10 @@ export const apiSlice = createApi({
     "TodayTrips",
     "Bus",      
     "BusStats",
+    "BusRoutes",
+    "OwnerBuses",
+    "BusStops",
+    "OfflineBookings",
   ],
   endpoints: () => ({}),
 });
