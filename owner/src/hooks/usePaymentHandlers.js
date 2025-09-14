@@ -92,6 +92,7 @@ export const usePaymentHandlers = (
       prefill: createPrefillData(formData),
       theme: { color: PAYMENT_CONFIG.THEME_COLOR },
     };
+      console.log("Opening Razorpay with options:", options);
 
     const rzp = new window.Razorpay(options);
     rzp.on("payment.failed", onFailure);

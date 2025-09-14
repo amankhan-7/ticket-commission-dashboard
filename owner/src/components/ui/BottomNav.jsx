@@ -8,7 +8,7 @@ import clsx from "clsx";
 const navItems = [
   { label: "Home", icon: FaHome, href: "/" },
   { label: "Buses", icon: FaBus, href: "/buses" },
-  { label: "Offline Booking", icon: FaTicketAlt, href: "/offline-booking" },
+  { label: "Bookings", icon: FaTicketAlt, href: "/offline-booking" },
   { label: "Drivers", icon: FaUser, href: "/drivers" },
   { label: "Settings", icon: FaCog, href: "/settings" },
 ];
@@ -36,7 +36,7 @@ export default function BottomNav() {
               <Link
                 href={href}
                 className={clsx(
-                  "flex flex-col items-center gap-1 focus:outline-none transition-colors duration-200 py-14",
+                  "flex flex-col items-center gap-0 focus:outline-none transition-colors duration-200 py-0",
                   isActive ? "text-[#004aad] font-semibold" : "text-gray-500"
                 )}
               >

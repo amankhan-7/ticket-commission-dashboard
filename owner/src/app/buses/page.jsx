@@ -41,6 +41,7 @@ import { busSchema } from "@/utils/validations/form-validation";
 import { useRouter } from "next/navigation";
 import WeeklySeatsChart from "@/components/chart/WeeklySeatsChart";
 import { safeLocalStorage } from "@/utils/localStorage";
+import AddBusForm from "@/components/buses/AddBusForm";
 
 export default function BusesPage() {
   const searchParams = useSearchParams();
@@ -781,7 +782,7 @@ export default function BusesPage() {
           </div>
         </div>
 
-        {showForm && (
+        {/* {showForm && (
           <section
             className="bg-white rounded-[12px] p-6 mt-10 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp"
             ref={showFormRef}
@@ -1046,7 +1047,17 @@ export default function BusesPage() {
               </div>
             </form>
           </section>
-        )}
+        )}  */}
+
+         <AddBusForm
+        showFormRef={showFormRef}
+        showForm={showForm}
+        setShowForm={setShowForm}
+        editMode={editMode}
+        handleSubmit={handleSubmit}
+        busData={busData}
+        handleChange={handleChange}
+      /> 
 
         {showBulkForm && (
           <section
