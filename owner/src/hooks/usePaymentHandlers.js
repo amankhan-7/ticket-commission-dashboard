@@ -9,73 +9,80 @@ import {
 import { toast } from "sonner";
 
 export const usePaymentHandlers = (
-  createBooking,
-  confirmPayment,
+  createBookingMutation,
+  confirmOnlinePaymentMutation,
   setProcessing,
   currentUser
 ) => {
   const router = useRouter();
 
-  const handlePaymentSuccess = async (response, bookingId, amount) => {
+  const createRazorpayOrder = async (
+    formData,
+    bookingData,
+    routeId,
+    seatNumbers,
+    journeyDate
+  ) => {
+    setProcessing(true);
+
+    const bookingResult = await createBookingMutation({
+      ...bookingData,
+      paymentType: 'online'
+    }).unwrap();
+
+    const { booking, paymentOrder } = bookingResult;
+
+    return { bookingId: booking.id, paymentOrder };
+  };
+
+  const handlePaymentSuccess = async (response, bookingId, amount, onSuccess) => {
     try {
-      await confirmPayment({
+      const result = await confirmOnlinePaymentMutation({
         bookingId,
         paymentId: response.razorpay_payment_id,
         orderId: response.razorpay_order_id,
         signature: response.razorpay_signature,
         paymentMethod: PAYMENT_CONFIG.DEFAULT_PAYMENT_METHOD,
-      });
+      }).unwrap();
 
       toast.success("Payment successful! Booking confirmed.");
-      return { success: true, bookingId, paymentId: response.razorpay_payment_id };
+      
+      // Call the success callback with the booking data
+      if (onSuccess) {
+        onSuccess(result.booking);
+      }
     } catch (err) {
       console.error("Booking confirmation failed:", err);
-      toast.error("Payment succeeded, but booking failed. Please contact support.");
-      return { success: false, error: err.message };
+      toast.success(
+        "Payment succeeded, but booking failed. Please contact support."
+      );
     } finally {
       setProcessing(false);
     }
   };
 
-  const handlePaymentFailure = (response) => {
+  const handlePaymentFailure = (response, bookingId) => {
     console.error("Razorpay payment failed:", response.error);
     toast.error(`Payment Failed\nReason: ${response.error.description}`);
     setProcessing(false);
   };
 
-  const waitForRazorpay = () => {
-    return new Promise((resolve, reject) => {
-      if (window.Razorpay) {
-        resolve();
-        return;
-      }
-
-      let attempts = 0;
-      const maxAttempts = 50; // 5 seconds max wait
-      const interval = setInterval(() => {
-        attempts++;
-        if (window.Razorpay) {
-          clearInterval(interval);
-          resolve();
-        } else if (attempts >= maxAttempts) {
-          clearInterval(interval);
-          reject(new Error("Razorpay script failed to load within timeout"));
-        }
-      }, 100);
-    });
+  const handlePaymentCancel = (bookingId) => {
+    console.log("Payment cancelled by user");
+    toast.error("Payment was cancelled. You can retry your payment.");
+    setProcessing(false);
   };
 
-  const initiateRazorpayPayment = async (
+  const initiateRazorpayPayment = (
     paymentOrder,
     formData,
     onSuccess,
-    onFailure
+    onFailure,
+    onCancel
   ) => {
     try {
-      await waitForRazorpay();
       validateRazorpayAvailability();
     } catch (error) {
-      console.error("Razorpay validation failed:", error);
       toast.error(error.message);
       setProcessing(false);
       return;
@@ -91,8 +98,10 @@ export const usePaymentHandlers = (
       handler: onSuccess,
       prefill: createPrefillData(formData),
       theme: { color: PAYMENT_CONFIG.THEME_COLOR },
+      modal: {
+        ondismiss: onCancel
+      }
     };
-      console.log("Opening Razorpay with options:", options);
 
     const rzp = new window.Razorpay(options);
     rzp.on("payment.failed", onFailure);
@@ -100,31 +109,37 @@ export const usePaymentHandlers = (
     rzp.open();
   };
 
-  const processPayment = async (
+  const processOnlinePayment = async (
     formData,
     bookingData,
-    onSuccess,
-    onFailure
+    routeId,
+    seatNumbers,
+    journeyDate,
+    onSuccess
   ) => {
     try {
-      const result = await createBooking(bookingData).unwrap();
-      
-      if (result.success && result.data.paymentOrder) {
-        await initiateRazorpayPayment(
-          result.data.paymentOrder,
-          formData,
-          (response) => onSuccess(response, result.data.booking.id, result.data.paymentOrder.amount),
-          onFailure
-        );
-      } else {
-        throw new Error("Failed to create booking");
-      }
+      const { bookingId, paymentOrder } = await createRazorpayOrder(
+        formData,
+        bookingData,
+        routeId,
+        seatNumbers,
+        journeyDate
+      );
+
+      initiateRazorpayPayment(
+        paymentOrder,
+        formData,
+        (response) =>
+          handlePaymentSuccess(response, bookingId, paymentOrder?.amount, onSuccess),
+        (response) => handlePaymentFailure(response, bookingId),
+        () => handlePaymentCancel(bookingId)
+      );
     } catch (err) {
-      console.error("Booking creation or Razorpay setup failed:", err);
+      console.error("Payment setup failed:", err);
       toast.error(formatPaymentError(err));
       setProcessing(false);
     }
   };
 
-  return { processPayment, handlePaymentSuccess, handlePaymentFailure };
+  return { processOnlinePayment };
 };

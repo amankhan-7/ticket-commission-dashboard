@@ -7,6 +7,8 @@ import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
 import AccountForm from "@/components/account/account-form";
+import LogoutButton from "@/components/account/logout-button";
+import AuthGuard from "@/components/wrapper/AuthGuard";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -32,9 +34,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
-      {/* Sidebar Navigation */}
-      <BottomNav />
+    <AuthGuard redirectTo="/login" requireAuth>
+      <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
+        {/* Sidebar Navigation */}
+        <BottomNav />
 
       {/* Page Content */}
       <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
@@ -60,9 +63,13 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-  <  AccountForm/>
         
-      
+        {/* Account Form */}
+        <AccountForm />
+        
+        {/* Logout Button */}
+        <LogoutButton />
+        
         {/* Settings Form */}
         {/* <section className="bg-white rounded-[12px] p-6 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
           <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
@@ -132,5 +139,6 @@ export default function SettingsPage() {
         </section> */}
       </main>
     </div>
+    </AuthGuard>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
+import AuthGuard from "@/components/wrapper/AuthGuard";
 import {
   useAddDriverMutation,
   useVerifyDriverInvitationMutation,
@@ -129,9 +130,10 @@ export default function DriversPage() {
       : "SB";
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
-      {/* Sidebar Navigation */}
-      <BottomNav />
+    <AuthGuard redirectTo="/login" requireAuth>
+      <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
+        {/* Sidebar Navigation */}
+        <BottomNav />
 
       {/* Page Content */}
       <main className="flex-1 px-4 pb-24 md:pb-6 md:px-10 lg:ml-18">
@@ -421,5 +423,6 @@ export default function DriversPage() {
         )}
       </main>
     </div>
+    </AuthGuard>
   );
 }
