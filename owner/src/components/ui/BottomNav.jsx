@@ -8,7 +8,7 @@ import clsx from "clsx";
 const navItems = [
   { label: "Home", icon: FaHome, href: "/" },
   { label: "Buses", icon: FaBus, href: "/buses" },
-  { label: "Bookings", icon: FaTicketAlt, href: "/offline-booking" },
+  { label: "Book Offline", icon: FaTicketAlt, href: "/offline-booking" },
   { label: "Drivers", icon: FaUser, href: "/drivers" },
   { label: "Settings", icon: FaCog, href: "/settings" },
 ];

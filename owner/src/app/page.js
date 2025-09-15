@@ -1,7 +1,7 @@
 "use client";
 
 import BottomNav from "@/components/ui/BottomNav";
-import { FaBus, FaTicketAlt, FaPlus, FaCircleNotch } from "react-icons/fa";
+import { FaBus, FaTicketAlt, FaPlus, FaCircleNotch, FaArrowRight } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { useGetTodaySeatsBookedQuery } from "@/utils/redux/api/busSlice";
 import { useSelector } from "react-redux";
@@ -92,6 +92,12 @@ export default function HomePage() {
                   totalTrips
                 )}
               </div>
+              <div className="flex flex-row gap-1 cursor-pointer"
+                onClick={() => router.push("/offline-booking")}>
+                 <p className="text-xs md:text-sm text-primary font-bold">View All Trips</p>
+              <FaArrowRight size={17} className="text-primary pt-1"/>
+              </div>
+             
             </div>
             <div className="w-9 h-9 rounded-lg bg-[#004aad] text-white flex items-center justify-center">
               <FaBus />

@@ -38,10 +38,16 @@ export default function MultiStepBusForm({
         </h2>
 
         {/* Progress Header */}
-        <div className="text-center flex mb-6 items-center justify-center">
+        <div className="text-center flex flex-col mb-6 items-center justify-center">
           {/* Mobile View: Only show current step */}
-          <h2 className="text-lg md:hidden font-demobold text-white bg-primary rounded-full py-1 px-4">
-            {currentStep + 1}. {steps[currentStep]}
+          <div
+            className="w-8 h-8  md:hidden  rounded-full flex items-center justify-center
+                       bg-primary text-white font-bold"
+          >
+            {currentStep + 1}
+          </div>
+          <h2 className="text-lg md:hidden font-semibold text-gray-600 bg-pr rounded-full py-1 px-4">
+            {steps[currentStep]}
           </h2>
 
           {/* Desktop View: Show all steps */}
@@ -221,7 +227,7 @@ export default function MultiStepBusForm({
             ) : (
               <button
                 type="submit"
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-700"
               >
                 {editMode ? "Update Bus" : "Add Bus"}
               </button>
