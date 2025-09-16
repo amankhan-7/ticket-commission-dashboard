@@ -21,15 +21,19 @@ import {
   useGetBusStopsQuery,
   useSearchBusRoutesMutation,
   useGetRouteSeatLayoutQuery,
+  useLockSeatsForBookingMutation,
   useCreateOfflineBookingMutation,
+  useConfirmOnlineBookingPaymentMutation,
 } from "@/utils/redux/api/busSlice";
 import BusLayoutContainer from "@/components/seats/bus-layout-container";
 import PaymentOptions from "@/components/payment/PaymentOptions";
 import PaymentScripts from "@/components/payment/PaymentScripts";
+import PaymentSuccessScreen from "@/components/payment/PaymentSuccessScreen";
 import { usePaymentHandlers } from "@/hooks/usePaymentHandlers";
 import { PAYMENT_CONFIG } from "@/constants/payment";
 import { legendItems } from "@/constants/seat-selection";
 import { toast } from "sonner";
+import AuthGuard from "@/components/wrapper/AuthGuard";
 
 const OfflineBookingPage = () => {
   const router = useRouter();
@@ -44,7 +48,7 @@ const OfflineBookingPage = () => {
     setIsClient(true);
   }, []);
 
-  const [step, setStep] = useState(1); // 1: Bus Selection, 2: Route Search, 3: Seat Selection, 4: Passenger Details, 5: Payment
+  const [step, setStep] = useState(1); // 1: Bus Selection, 2: Route Search, 3: Seat Selection, 4: Passenger Details, 5: Payment Options
   const [selectedBus, setSelectedBus] = useState("");
   const [routeFrom, setRouteFrom] = useState("");
   const [routeTo, setRouteTo] = useState("");
@@ -62,6 +66,12 @@ const OfflineBookingPage = () => {
   });
   const [error, setError] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isOfflineProcessing, setIsOfflineProcessing] = useState(false);
+  const [offlineLoadingDuration] = useState(4); // Configurable loading duration in seconds
+  const [seatLockId, setSeatLockId] = useState(null);
+  const [isLockingSeats, setIsLockingSeats] = useState(false);
+  const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+  const [confirmedBooking, setConfirmedBooking] = useState(null);
 
   // Redux hooks
   const {
@@ -88,34 +98,20 @@ const OfflineBookingPage = () => {
     { routeId: selectedRoute?._id, journeyDate },
     { skip: !selectedRoute || !journeyDate }
   );
+  const [lockSeatsMutation, { isLoading: lockLoading }] =
+    useLockSeatsForBookingMutation();
   const [createBookingMutation, { isLoading: bookingLoading }] =
     useCreateOfflineBookingMutation();
+  const [confirmOnlinePaymentMutation] =
+    useConfirmOnlineBookingPaymentMutation();
 
-  // Payment handlers
-  const { processPayment, handlePaymentSuccess, handlePaymentFailure } =
-    usePaymentHandlers(
-      createBookingMutation,
-      async (paymentData) => {
-        // This will be handled by the backend confirm payment endpoint
-        const response = await fetch(
-          "http://localhost:9090/api/v1/bus-owner/offline-booking/confirm-payment",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${user.token}`,
-            },
-            credentials: "include",
-            body: JSON.stringify(paymentData),
-          }
-        );
-        return response.json();
-      },
-      setIsProcessingPayment,
-      user
-    );
+  const { processOnlinePayment } = usePaymentHandlers(
+    createBookingMutation,
+    confirmOnlinePaymentMutation,
+    setIsProcessingPayment,
+    user
+  );
 
-  // Handle buses loading error
   useEffect(() => {
     if (busesError) {
       setError("Failed to load buses. Please try again.");
@@ -166,7 +162,7 @@ const OfflineBookingPage = () => {
 
   const toggleSeatSelection = (seatNumber) => {
     if (seatLayout.seats.seatMap[seatNumber - 1].status !== "available") {
-      return; // Can't select unavailable seats
+      return;
     }
 
     setSelectedSeats((prev) => {
@@ -187,7 +183,7 @@ const OfflineBookingPage = () => {
     setError("");
   };
 
-  const proceedToPayment = async () => {
+  const proceedToPaymentOptions = async () => {
     if (
       !passengerDetails.firstName ||
       !passengerDetails.lastName ||
@@ -200,6 +196,93 @@ const OfflineBookingPage = () => {
       return;
     }
 
+    try {
+      setError("");
+      setIsLockingSeats(true);
+
+      const lockResult = await lockSeatsMutation({
+        routeId: selectedRoute._id,
+        seatNumbers: selectedSeats,
+        journeyDate,
+      }).unwrap();
+
+      setSeatLockId(lockResult.lockId);
+      setStep(5);
+    } catch (error) {
+      console.error("Seat locking error:", error);
+      setError(
+        error.data?.message ||
+          error.message ||
+          "Failed to lock seats. Please try again."
+      );
+    } finally {
+      setIsLockingSeats(false);
+    }
+  };
+
+  const handleOfflinePayment = async () => {
+    try {
+      setError("");
+      setIsOfflineProcessing(true);
+
+      const bookingData = {
+        routeId: selectedRoute._id,
+        seatNumbers: selectedSeats,
+        passengerDetails: {
+          name: `${passengerDetails.firstName} ${passengerDetails.lastName}`.trim(),
+          age: passengerDetails.age,
+          gender: passengerDetails.gender,
+          email: passengerDetails.email,
+          phone: passengerDetails.phone,
+        },
+        journeyDate,
+        paymentType: "offline",
+      };
+
+      // Call the offline booking API
+      const response = await createBookingMutation(bookingData).unwrap();
+
+      setTimeout(() => {
+        setIsOfflineProcessing(false);
+        const enhancedBooking = {
+          ...response.booking,
+          busId: {
+            busName:
+              selectedRoute?.busId?.busName || selectedRoute?.busName || "N/A",
+          },
+          fromCity:
+            selectedRoute?.matchedFrom ||
+            selectedRoute?.routeFrom ||
+            response.booking.fromCity,
+          toCity:
+            selectedRoute?.matchedTo ||
+            selectedRoute?.routeTo ||
+            response.booking.toCity,
+          departureTime:
+            selectedRoute?.departureTime || selectedRoute?.startTime || "N/A",
+          arrivalTime:
+            selectedRoute?.arrivalTime || selectedRoute?.endTime || "N/A",
+          departureTimeDisplay:
+            selectedRoute?.departureTime || selectedRoute?.startTime || "N/A",
+          arrivalTimeDisplay:
+            selectedRoute?.arrivalTime || selectedRoute?.endTime || "N/A",
+        };
+
+        setConfirmedBooking(enhancedBooking);
+        setShowSuccessScreen(true);
+      }, offlineLoadingDuration * 1000);
+    } catch (error) {
+      console.error("Offline payment processing error:", error);
+      setError(
+        error.data?.message ||
+          error.message ||
+          "Failed to process offline payment. Please try again."
+      );
+      setIsOfflineProcessing(false);
+    }
+  };
+
+  const handleOnlinePayment = async () => {
     try {
       setError("");
       setIsProcessingPayment(true);
@@ -215,22 +298,50 @@ const OfflineBookingPage = () => {
           phone: passengerDetails.phone,
         },
         journeyDate,
+        paymentType: "online",
       };
 
-      await processPayment(
+      await processOnlinePayment(
         passengerDetails,
         bookingData,
-        (response, bookingId, amount) => {
-          handlePaymentSuccess(response, bookingId, amount);
-          resetForm();
-        },
-        (error) => {
-          handlePaymentFailure(error);
+        selectedRoute._id,
+        selectedSeats,
+        journeyDate,
+        (booking) => {
+          const enhancedBooking = {
+            ...booking,
+            busId: {
+              busName:
+                selectedRoute?.busId?.busName ||
+                selectedRoute?.busName ||
+                "N/A",
+            },
+            fromCity:
+              selectedRoute?.matchedFrom ||
+              selectedRoute?.routeFrom ||
+              booking.fromCity,
+            toCity:
+              selectedRoute?.matchedTo ||
+              selectedRoute?.routeTo ||
+              booking.toCity,
+            departureTime:
+              selectedRoute?.departureTime || selectedRoute?.startTime || "N/A",
+            arrivalTime:
+              selectedRoute?.arrivalTime || selectedRoute?.endTime || "N/A",
+            departureTimeDisplay:
+              selectedRoute?.departureTime || selectedRoute?.startTime || "N/A",
+            arrivalTimeDisplay:
+              selectedRoute?.arrivalTime || selectedRoute?.endTime || "N/A",
+          };
+          setConfirmedBooking(enhancedBooking);
+          setShowSuccessScreen(true);
         }
       );
     } catch (error) {
-      console.error("Payment processing error:", error);
-      setError(error.message || "Failed to process payment. Please try again.");
+      console.error("Online payment processing error:", error);
+      setError(
+        error.message || "Failed to process online payment. Please try again."
+      );
       setIsProcessingPayment(false);
     }
   };
@@ -242,7 +353,11 @@ const OfflineBookingPage = () => {
     setRouteTo("");
   };
 
-  // Reset form to initial state
+  const goBackToSeatSelection = () => {
+    setSeatLockId(null);
+    setStep(3);
+  };
+
   const resetForm = () => {
     setStep(1);
     setSelectedBus("");
@@ -262,6 +377,45 @@ const OfflineBookingPage = () => {
     });
     setError("");
     setIsProcessingPayment(false);
+    setIsOfflineProcessing(false);
+    setIsLockingSeats(false);
+    setSeatLockId(null);
+    setShowSuccessScreen(false);
+    setConfirmedBooking(null);
+  };
+
+  const handleSuccessScreenClose = () => {
+    setShowSuccessScreen(false);
+    setConfirmedBooking(null);
+    setStep(1);
+    setSelectedBus("");
+    setRouteFrom("");
+    setRouteTo("");
+    setJourneyDate("");
+    setRoutes([]);
+    setSelectedRoute(null);
+    setSelectedSeats([]);
+    setPassengerDetails({
+      firstName: "",
+      lastName: "",
+      age: "",
+      gender: "",
+      email: "",
+      phone: "",
+    });
+    setError("");
+    setIsProcessingPayment(false);
+    setIsOfflineProcessing(false);
+    setIsLockingSeats(false);
+    setSeatLockId(null);
+  };
+
+  const handleGoHome = () => {
+    router.push("/");
+  };
+
+  const handleDownloadTicket = (booking) => {
+    console.log("Downloading ticket for booking:", booking);
   };
 
   const renderStep1 = () => {
@@ -435,7 +589,8 @@ const OfflineBookingPage = () => {
                   </h3>
                   <p className="text-sm text-gray-600 flex items-center gap-2">
                     <FaRoute className="text-[#004aad]" />
-                    {route.routeFrom} → {route.routeTo}
+                    {route.matchedFrom || route.routeFrom} →{" "}
+                    {route.matchedTo || route.routeTo}
                   </p>
                   <p className="text-sm text-gray-500">
                     {route.departureTime} - {route.arrivalTime}
@@ -483,7 +638,9 @@ const OfflineBookingPage = () => {
             </h3>
             <p className="text-sm text-gray-600 flex items-center gap-2">
               <FaRoute className="text-[#004aad]" />
-              {seatLayout.route.routeFrom} → {seatLayout.route.routeTo}
+              {seatLayout.route.matchedFrom ||
+                seatLayout.route.routeFrom} →{" "}
+              {seatLayout.route.matchedTo || seatLayout.route.routeTo}
             </p>
             <p className="text-sm text-gray-500">
               {seatLayout.route.departureTime} - {seatLayout.route.arrivalTime}
@@ -696,12 +853,126 @@ const OfflineBookingPage = () => {
         </div>
 
         <button
-          onClick={proceedToPayment}
-          disabled={isProcessingPayment}
+          onClick={proceedToPaymentOptions}
+          disabled={
+            isProcessingPayment || isOfflineProcessing || isLockingSeats
+          }
           className="w-full px-6 py-2 bg-[#004aad] text-white rounded-lg hover:bg-[#00348a] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isProcessingPayment ? "Processing..." : "Continue to Payment"}
+          {isLockingSeats
+            ? "Locking Seats..."
+            : isProcessingPayment || isOfflineProcessing
+            ? "Processing..."
+            : "Continue to Payment"}
         </button>
+      </div>
+    </div>
+  );
+
+  const renderStep5 = () => (
+    <div className="bg-white rounded-[12px] p-6 shadow max-w-2xl mx-auto animate-fadeInUp">
+      <h2 className="text-[#004aad] mb-4 text-lg font-semibold flex items-center gap-2">
+        <FaRupeeSign className="text-[#004aad]" />
+        Payment Options
+      </h2>
+
+      <div className="space-y-4">
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="font-semibold text-gray-800 mb-2">Booking Summary</h3>
+          <div className="text-sm text-gray-600 space-y-1">
+            <p>
+              <span className="font-medium">Passenger:</span>{" "}
+              {passengerDetails.firstName} {passengerDetails.lastName}
+            </p>
+            <p>
+              <span className="font-medium">Route:</span>{" "}
+              {selectedRoute?.matchedFrom || selectedRoute?.routeFrom} →{" "}
+              {selectedRoute?.matchedTo || selectedRoute?.routeTo}
+            </p>
+            <p>
+              <span className="font-medium">Date:</span> {journeyDate}
+            </p>
+            <p>
+              <span className="font-medium">Seats:</span>{" "}
+              {selectedSeats.join(", ")}
+            </p>
+            <p>
+              <span className="font-medium">Total Amount:</span> ₹
+              {selectedSeats.length * selectedRoute?.basePrice}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={handleOfflinePayment}
+            disabled={isOfflineProcessing || isProcessingPayment}
+            className="flex flex-col items-center justify-center p-6 border-2 border-green-500 rounded-lg hover:bg-green-50 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {/* ₹💸💸 */}
+            <div className="text-4xl mb-2">₹</div>
+            <h3 className="font-semibold text-green-700 mb-2">Pay Offline</h3>
+            <p className="text-sm text-gray-600 text-center">
+              Customer pays with cash at your office
+            </p>
+            {isOfflineProcessing && (
+              <div className="mt-2 flex items-center gap-2 text-green-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                <span className="text-sm">Processing...</span>
+              </div>
+            )}
+          </button>
+
+          <button
+            onClick={handleOnlinePayment}
+            disabled={isOfflineProcessing || isProcessingPayment}
+            className="flex flex-col items-center justify-center p-6 border-2 border-blue-500 rounded-lg hover:bg-blue-50 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div className="text-4xl mb-2">💳</div>
+            <h3 className="font-semibold text-blue-700 mb-2">Pay Online</h3>
+            <p className="text-sm text-gray-600 text-center">
+              Customer pays via Razorpay gateway
+            </p>
+            {isProcessingPayment && (
+              <div className="mt-2 flex items-center gap-2 text-blue-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-sm">Processing...</span>
+              </div>
+            )}
+          </button>
+        </div>
+
+        <div className="flex justify-between items-center mt-6">
+          <button
+            onClick={goBackToSeatSelection}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition cursor-pointer"
+          >
+            ← Back to Seat Selection
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderOfflineLoadingScreen = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#004aad] mx-auto mb-4"></div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">
+          Processing Offline Payment
+        </h3>
+        <p className="text-gray-600 mb-4">
+          Please wait while we complete your booking...
+        </p>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-[#004aad] h-2 rounded-full animate-pulse"
+            style={{ width: "100%" }}
+          ></div>
+        </div>
+        <p className="text-sm text-gray-500 mt-2">
+          This will take about {offlineLoadingDuration} seconds
+        </p>
       </div>
     </div>
   );
@@ -709,86 +980,105 @@ const OfflineBookingPage = () => {
   // Show loading state during hydration
   if (!isClient) {
     return (
-      <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
-        <BottomNav />
-        <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
-          <div className="bg-white p-4 mt-4 md:mt-8 rounded-lg shadow mb-6 max-w-5xl mx-auto w-full">
-            <h1 className="text-xl font-semibold text-[#004aad] mb-4">
-              Offline Booking
-            </h1>
-            <p className="text-gray-600 text-sm">
-              Book tickets for customers who visit your office directly
-            </p>
-          </div>
-          <div className="max-w-5xl mx-auto">
-            <div className="bg-white rounded-[12px] p-6 shadow max-w-2xl mx-auto animate-fadeInUp">
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#004aad] mx-auto"></div>
-                <p className="mt-2 text-gray-600">Loading...</p>
+      <AuthGuard redirectTo="/login" requireAuth>
+        <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
+          <BottomNav />
+          <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
+            <div className="bg-white p-4 mt-4 md:mt-8 rounded-lg shadow mb-6 max-w-5xl mx-auto w-full">
+              <h1 className="text-xl font-semibold text-[#004aad] mb-4">
+                Offline Booking
+              </h1>
+              <p className="text-gray-600 text-sm">
+                Book tickets for customers who visit your office directly
+              </p>
+            </div>
+            <div className="max-w-5xl mx-auto">
+              <div className="bg-white rounded-[12px] p-6 shadow max-w-2xl mx-auto animate-fadeInUp">
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#004aad] mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Loading...</p>
+                </div>
               </div>
             </div>
-          </div>
-        </main>
-      </div>
+          </main>
+        </div>
+      </AuthGuard>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
-      {/* Sidebar Navigation */}
-      <BottomNav />
+    <AuthGuard redirectTo="/login" requireAuth>
+      <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
+        {/* Sidebar Navigation */}
+        <BottomNav />
 
-      {/* Page Content */}
-      <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
-        {/* Header */}
-        <div className="bg-white p-4 mt-4 md:mt-8 rounded-lg shadow mb-6 max-w-5xl mx-auto w-full flex flex-col md:flex-row md:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-[#004aad] mb-4 md:mb-0">
-              Offline Bookings
-            </h1>
-            <p className="text-gray-600 text-sm">
-              Book tickets for customers who visit your office directly
-            </p>
-          </div>
-
-          <div
-            className="flex items-center gap-3 cursor-pointer"
-            onClick={() => router.push("/account")}
-          >
-            <div className="w-10 h-10 rounded-full bg-[#004aad] text-white flex items-center justify-center font-semibold">
-              {initials}
-            </div>
+        {/* Page Content */}
+        <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
+          {/* Header */}
+          <div className="bg-white p-4 mt-4 md:mt-8 rounded-lg shadow mb-6 max-w-5xl mx-auto w-full flex flex-col md:flex-row md:justify-between">
             <div>
-              <div className="font-medium text-gray-800">
-                {user?.firstName || user?.lastName
-                  ? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()
-                  : "Unknown Owner"}
+              <h1 className="text-xl font-semibold text-[#004aad] mb-4 md:mb-0">
+                Offline Bookings
+              </h1>
+              <p className="text-gray-600 text-sm">
+                Book tickets for customers who visit your office directly
+              </p>
+            </div>
+
+            <div
+              className="flex items-center gap-3 cursor-pointer"
+              onClick={() => router.push("/account")}
+            >
+              <div className="w-10 h-10 rounded-full bg-[#004aad] text-white flex items-center justify-center font-semibold">
+                {initials}
               </div>
-              <div className="text-sm text-gray-500">Bus Owner</div>
+              <div>
+                <div className="font-medium text-gray-800">
+                  {user?.firstName || user?.lastName
+                    ? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()
+                    : "Unknown Owner"}
+                </div>
+                <div className="text-sm text-gray-500">Bus Owner</div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {(error || busesError) && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 max-w-2xl mx-auto">
-            {error ||
-              busesError?.data?.message ||
-              busesError?.message ||
-              "An error occurred"}
+          {(error || busesError) && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 max-w-2xl mx-auto">
+              {error ||
+                busesError?.data?.message ||
+                busesError?.message ||
+                "An error occurred"}
+            </div>
+          )}
+
+          <div className="max-w-5xl mx-auto">
+            {step === 1 && renderStep1()}
+            {step === 2 && renderStep2()}
+            {step === 3 && renderStep3()}
+            {step === 4 && renderStep4()}
+            {step === 5 && renderStep5()}
           </div>
-        )}
 
-        <div className="max-w-5xl mx-auto">
-          {step === 1 && renderStep1()}
-          {step === 2 && renderStep2()}
-          {step === 3 && renderStep3()}
-          {step === 4 && renderStep4()}
-        </div>
+          {/* Offline Payment Loading Screen */}
+          {isOfflineProcessing && renderOfflineLoadingScreen()}
 
-        {/* Payment Scripts */}
-        <PaymentScripts />
-      </main>
-    </div>
+          {/* Online Payment Success Screen */}
+          {showSuccessScreen && (
+            <PaymentSuccessScreen
+              booking={confirmedBooking}
+              onClose={handleSuccessScreenClose}
+              onDownloadTicket={handleDownloadTicket}
+              onGoHome={handleGoHome}
+              loadingDuration={3000}
+            />
+          )}
+
+          {/* Payment Scripts */}
+          <PaymentScripts />
+        </main>
+      </div>
+    </AuthGuard>
   );
 };
 

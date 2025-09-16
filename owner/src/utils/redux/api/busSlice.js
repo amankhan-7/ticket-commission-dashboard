@@ -307,11 +307,29 @@ const busSlice = apiSlice.injectEndpoints({
       transformResponse: (response) => response.data,
     }),
 
+    lockSeatsForBooking: builder.mutation({
+      query: ({ routeId, seatNumbers, journeyDate }) => ({
+        url: "/offline-booking/lock-seats",
+        method: "POST",
+        body: { routeId, seatNumbers, journeyDate },
+      }),
+      transformResponse: (response) => response.data,
+    }),
+
     createOfflineBooking: builder.mutation({
       query: (bookingData) => ({
         url: "/offline-booking/create",
         method: "POST",
         body: bookingData,
+      }),
+      transformResponse: (response) => response.data,
+    }),
+
+    confirmOnlineBookingPayment: builder.mutation({
+      query: ({ bookingId, paymentId, orderId, signature, paymentMethod }) => ({
+        url: "/offline-booking/confirm-online-payment",
+        method: "POST",
+        body: { bookingId, paymentId, orderId, signature, paymentMethod },
       }),
       transformResponse: (response) => response.data,
     }),
@@ -345,7 +363,9 @@ export const {
   useSearchBusRoutesMutation,
   useGetRouteSeatLayoutQuery,
   useValidateOwnerPinMutation,
+  useLockSeatsForBookingMutation,
   useCreateOfflineBookingMutation,
+  useConfirmOnlineBookingPaymentMutation,
   useGetOfflineBookingHistoryQuery,
 } = busSlice;
 

@@ -1,6 +1,5 @@
-"use client";
-import Script from "next/script";
 import { PAYMENT_CONFIG } from "@/constants/payment";
+import Script from "next/script";
 
 export default function PaymentScripts() {
   return (

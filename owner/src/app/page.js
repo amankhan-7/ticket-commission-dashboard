@@ -8,6 +8,7 @@ import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
 import Image from "next/image";
 import { useEffect } from "react";
+import AuthGuard from "@/components/wrapper/AuthGuard";
 
 export default function HomePage() {
   const router = useRouter();
@@ -39,6 +40,8 @@ export default function HomePage() {
   };
 
   return (
+    <AuthGuard redirectTo="/login" requireAuth>
+      
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
       {/* Sidebar Navigation */}
       <BottomNav />
@@ -135,5 +138,8 @@ export default function HomePage() {
         </div>
       </main>
     </div>
+  );
+
+    </AuthGuard>
   );
 }

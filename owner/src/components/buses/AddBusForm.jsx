@@ -219,7 +219,10 @@ export default function MultiStepBusForm({
             {currentStep < steps.length - 1 ? (
               <button
                 type="button"
-                onClick={nextStep}
+                onClick={(e) => {
+                  e.preventDefault();
+                  nextStep();
+                }}
                 className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-900"
               >
                 Next
