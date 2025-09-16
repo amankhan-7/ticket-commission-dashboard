@@ -1,6 +1,6 @@
 "use client";
 
-import BottomNav from "@/components/UI/BottomNav";
+import BottomNav from "@/components/ui/BottomNav";
 import { useState } from "react";
 import {
   FaTrash,
@@ -9,31 +9,44 @@ import {
   FaPhone,
   FaCalendarCheck,
   FaCircle,
+  FaUserMinus,
+  FaUserTimes,
+  FaUsersSlash,
 } from "react-icons/fa";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  addDriver,
-  deleteDriver,
-} from "@/utils/redux/slices/driversSlice";
+import { useSelector } from "react-redux";
+import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
+import AuthGuard from "@/components/wrapper/AuthGuard";
 import {
   useAddDriverMutation,
   useVerifyDriverInvitationMutation,
+  useGetDriversQuery,
+  useRemoveDriverMutation,
+  useUnassignDriverMutation,
 } from "@/utils/redux/api/driverSlice";
+import { useRouter } from "next/navigation";
 
 export default function DriversPage() {
-  const drivers = useSelector((state) => state.drivers);
-  const dispatch = useDispatch();
+  const router = useRouter();
 
   const [driverPhone, setDriverPhone] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [driverName, setDriverName] = useState("");
+  const [driverFirstName, setDriverFirstName] = useState("");
+  const [driverLastName, setDriverLastName] = useState("");
   const [drivingLicense, setDriverDrivingLicense] = useState("");
   const [joiningDate, setJoiningDate] = useState("");
   const [isInvited, setIsInvited] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
-  const [addDriverMut, { isLoading: isInviting } ] = useAddDriverMutation();
-  const [verifyInvitation, { isLoading: isVerifying } ] = useVerifyDriverInvitationMutation();
+  const [addDriverMut, { isLoading: isInviting }] = useAddDriverMutation();
+  const [verifyInvitation, { isLoading: isVerifying }] =
+    useVerifyDriverInvitationMutation();
+  const { data: driversList = [], isLoading, isError } = useGetDriversQuery();
+  const [removeDriver, { isLoading: isRemoving }] = useRemoveDriverMutation();
+  const [unAssign, { isLoading: isUnAssigning }] = useUnassignDriverMutation();
+
+  const sortedDrivers = [...driversList].sort(
+    (a, b) => (b.status === "Active") - (a.status === "Active")
+  );
 
   const handleInvite = async (e) => {
     e.preventDefault();
@@ -44,7 +57,8 @@ export default function DriversPage() {
     try {
       await addDriverMut({
         phoneNumber: driverPhone,
-        name: driverName,
+        firstName: driverFirstName,
+        lastName: driverLastName,
         drivingLicense,
         joinedAt: joiningDate || undefined,
       }).unwrap();
@@ -65,14 +79,15 @@ export default function DriversPage() {
       await verifyInvitation({
         phoneNumber: driverPhone,
         otp: otpCode,
-        firstName: driverName,
-        lastName: "",
+        firstName: driverFirstName,
+        lastName: driverLastName || "",
         drivingLicense,
       }).unwrap();
       alert("Invitation verified and driver created!");
       // Reset form after verification
       setDriverPhone("");
-      setDriverName("");
+      setDriverFirstName("");
+      setDriverLastName("");
       setDriverDrivingLicense("");
       setJoiningDate("");
       setOtpCode("");
@@ -86,17 +101,39 @@ export default function DriversPage() {
   const handleCancel = () => {
     setShowForm(false);
     setDriverPhone("");
-    setDriverName("");
+    setDriverFirstName("");
+    setDriverLastName("");
     setDriverDrivingLicense("");
     setJoiningDate("");
     setOtpCode("");
     setIsInvited(false);
   };
 
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to remove this driver?"
+    );
+    if (!confirmed) return; // User cancelled
+
+    try {
+      await removeDriver({ id }).unwrap();
+      console.log("Driver removed successfully");
+    } catch (error) {
+      console.error("Failed to remove driver:", error);
+    }
+  };
+  const user = useSelector(selectCurrentUser);
+  const profilePic = useSelector((state) => state.profile.profilePic);
+  const initials =
+    user?.firstName && user?.lastName
+      ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
+      : "SB";
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
-      {/* Sidebar Navigation */}
-      <BottomNav />
+    <AuthGuard redirectTo="/login" requireAuth>
+      <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
+        {/* Sidebar Navigation */}
+        <BottomNav />
 
       {/* Page Content */}
       <main className="flex-1 px-4 pb-24 md:pb-6 md:px-10 lg:ml-18">
@@ -105,12 +142,19 @@ export default function DriversPage() {
           <h1 className="text-xl font-semibold text-[#004aad] mb-4 md:mb-0">
             Drivers
           </h1>
-          <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => router.push("/account")}
+          >
             <div className="w-10 h-10 rounded-full bg-[#004aad] text-white flex items-center justify-center font-semibold">
-              AR
+              {initials}
             </div>
             <div>
-              <div className="font-medium text-gray-800">Ankush Raj</div>
+              <div className="font-medium text-gray-800">
+                {user?.firstName || user?.lastName
+                  ? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()
+                  : "Unknown Owner"}
+              </div>
               <div className="text-sm text-gray-500">Bus Owner</div>
             </div>
           </div>
@@ -130,51 +174,86 @@ export default function DriversPage() {
             Add Drivers
           </button>
         </div>
-        
 
         {/* Drivers List */}
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 py-6 max-w-5xl mx-auto w-full animate-fadeInUp">
-          {drivers.map((driver, index) => (
-            <div
-              key={index}
-              className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
-            >
-              <div className="flex justify-between items-center px-4 py-3.5 border-b border-gray-200">
-                <h2 className="text-base font-semibold text-gray-800">
-                  {driver.name}
-                </h2>
-                <button
-                  onClick={() => dispatch(deleteDriver(driver.id))}
-                  title="Remove Driver"
-                  className="bg-[#007bff1a] text-[#004aad] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
+          {isLoading
+            ? Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="bg-white shadow rounded-sm animate-pulse p-7"
                 >
-                  <FaTrash />
-                </button>
-              </div>
+                  <div className="h-4 bg-gray-300 rounded w-1/2 mb-3"></div>
+                  <div className="h-3 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/4"></div>
+                </div>
+              ))
+            : sortedDrivers.map((driver) => (
+                <div
+                  key={driver._id}
+                  className="bg-white shadow rounded-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md"
+                >
+                  <div className="flex justify-between items-center px-4 py-3.5 border-b border-gray-200">
+                    <h2 className="text-base font-semibold text-gray-800">
+                      {driver.driverName}
+                    </h2>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() =>
+                          unAssign({
+                            driverId: driver._id,
+                            busId: driver.assignedTo,
+                          })
+                        }
+                        disabled={isRemoving}
+                        title="Remove Driver"
+                        className="bg-[#007bff1a] text-[#004aad] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
+                      >
+                        <FaUserTimes />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(driver._id)}
+                        disabled={isRemoving}
+                        title="Remove Driver"
+                        className="bg-[#007bff1a] text-[#004aad] hover:bg-[#007bff33] p-2 rounded-lg transition duration-200"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="flex flex-col gap-2 px-4 py-4 border-b border-gray-200 text-sm text-gray-700">
-                <div className="flex items-center gap-2">
-                  <FaBus className="text-[#28a745]" />
-                  <span>
-                    Assigned to: <strong>{driver.assignedTo}</strong>
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FaPhone className="text-[#28a745]" />
-                  <span>{driver.phone}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FaCalendarCheck className="text-[#28a745]" />
-                  <span>Joined: {driver.joined}</span>
-                </div>
-              </div>
+                  <div className="flex flex-col gap-2 px-4 py-4 border-b border-gray-200 text-sm text-gray-700">
+                    <div className="flex items-center gap-2">
+                      <FaBus className="text-[#28a745]" />
+                      <span>
+                        Assigned to:{" "}
+                        <strong>
+                          {driver.assignedTo ? driver.assignedTo : "None"}
+                        </strong>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaPhone className="text-[#28a745]" />
+                      <span>{driver.phoneNumber}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaCalendarCheck className="text-[#28a745]" />
+                      <span>Joined: {driver.joinedAt}</span>
+                    </div>
+                  </div>
 
-              <div className="flex items-center gap-2 p-2 text-[#28a745] bg-[#f5f7fa] font-medium">
-                <FaCircle className="text-xs" />
-                {driver.status}
-              </div>
-            </div>
-          ))}
+                  <div
+                    className={`flex items-center gap-2 p-2 font-medium ${
+                      driver.assignmentStatus === "assigned"
+                        ? "text-[#28a745] bg-[#e6f9ee]" // green for assigned
+                        : "text-[#dc3545] bg-[#fdecea]" // red for unassigned
+                    }`}
+                  >
+                    <FaCircle className="text-xs" />
+                      {driver.assignmentStatus.charAt(0).toUpperCase() + driver.assignmentStatus.slice(1)}
+                  </div>
+                </div>
+              ))}
         </div>
 
         {/* Add New Driver Form */}
@@ -186,6 +265,46 @@ export default function DriversPage() {
 
             <form onSubmit={handleInvite}>
               <div className="grid grid-cols-1 gap-4 mb-6">
+                {/* first Name */}
+                <div>
+                  <label
+                    htmlFor="driverName"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Name
+                  </label>
+                  <input
+                    id="driverFirstName"
+                    name="driverFirstName"
+                    type="text"
+                    value={driverFirstName}
+                    onChange={(e) => setDriverFirstName(e.target.value)}
+                    autoComplete="first name"
+                    placeholder="Enter driver's First name"
+                    className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                    disabled={isInvited || isInviting || isVerifying}
+                  />
+                </div>
+                {/* last Name */}
+                <div>
+                  <label
+                    htmlFor="driverName"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Name
+                  </label>
+                  <input
+                    id="driverLastName"
+                    name="driverLastName"
+                    type="text"
+                    value={driverLastName}
+                    onChange={(e) => setDriverLastName(e.target.value)}
+                    autoComplete="last name"
+                    placeholder="Enter driver's last name"
+                    className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
+                    disabled={isInvited || isInviting || isVerifying}
+                  />
+                </div>
                 <div>
                   <label
                     htmlFor="driverPhone"
@@ -205,27 +324,9 @@ export default function DriversPage() {
                     disabled={isInvited || isInviting || isVerifying}
                   />
                 </div>
-                 <div>
-                  <label
-                    htmlFor="driverName"
-                    className="block mb-2 text-sm font-medium text-gray-700"
-                  >
-                    Name
-                  </label>
-                  <input
-                    id="driverName"
-                    name="driverName"
-                    type="text"
-                    value={driverName}
-                    onChange={(e) => setDriverName(e.target.value)}
-                    autoComplete="name"
-                    placeholder="Enter driver's name"
-                    className="w-full p-2 placeholder-gray-400 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-800 transition duration-200 ease-in-out text-gray-700"
-                    disabled={isInvited || isInviting || isVerifying}
-                  />
-                </div>
+
                 {/* drivingLicense */}
-                 <div>
+                <div>
                   <label
                     htmlFor="drivingLicense"
                     className="block mb-2 text-sm font-medium text-gray-700"
@@ -244,8 +345,8 @@ export default function DriversPage() {
                     disabled={isInvited || isInviting || isVerifying}
                   />
                 </div>
-                   {/* Joining Date */}
-                 <div>
+                {/* Joining Date */}
+                <div>
                   <label
                     htmlFor="joiningDate"
                     className="block mb-2 text-sm font-medium text-gray-700"
@@ -322,5 +423,6 @@ export default function DriversPage() {
         )}
       </main>
     </div>
+    </AuthGuard>
   );
 }

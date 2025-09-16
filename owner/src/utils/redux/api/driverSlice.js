@@ -18,10 +18,26 @@ export const driverApiSlice = apiSlice.injectEndpoints({
     }),
 
     addDriver: builder.mutation({
-      query: ({ ownerId, name, phoneNumber, drivingLicense, joinedAt }) => ({
+      query: ({
+        firstName,
+        lastName,
+        phoneNumber,
+        drivingLicense,
+        joinedAt,
+      }) => ({
         url: `/drivers`,
         method: "POST",
-        body: { ownerId, name, phoneNumber, drivingLicense, joinedAt },
+        headers: {
+          UserType: "busOwner",
+        },
+        body: {
+          firstName,
+          lastName,
+          phoneNumber,
+          drivingLicense,
+          joinedAt,
+          UserType: "busOwner",
+        },
       }),
       invalidatesTags: [{ type: "Driver", id: "LIST" }],
       transformResponse: (res) => res.data,
@@ -37,8 +53,22 @@ export const driverApiSlice = apiSlice.injectEndpoints({
     }),
 
     assignDriver: builder.mutation({
-      query: ({ id, busId }) => ({
-        url: `/drivers/${id}/assign`,
+      query: ({ driverId, busId }) => ({
+        url: `/drivers/${driverId}/assign`,
+        method: "PUT",
+        body: { driverId, busId },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Driver", id },
+        { type: "Driver", id: "LIST" },
+        { type: "Route", id: "LIST" },
+      ],
+      transformResponse: (res) => res.data,
+    }),
+
+    unassignDriver: builder.mutation({
+      query: ({ driverId, busId }) => ({
+        url: `/drivers/${driverId}/unassign`,
         method: "PUT",
         body: { busId },
       }),
@@ -91,6 +121,7 @@ export const {
   useAddDriverMutation,
   useRemoveDriverMutation,
   useAssignDriverMutation,
+  useUnassignDriverMutation,
   useGetDriverByIdQuery,
   useUpdateDriverMutation,
   useVerifyDriverInvitationMutation,

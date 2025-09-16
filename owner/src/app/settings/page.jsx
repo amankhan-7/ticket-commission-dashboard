@@ -1,14 +1,28 @@
 "use client";
 
-import BottomNav from "@/components/UI/BottomNav";
+import BottomNav from "@/components/ui/BottomNav";
 import { FaSignOutAlt } from "react-icons/fa";
 import { useState } from "react";
+import { useSelector } from "react-redux";
+import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
+import { useRouter } from "next/navigation";
+import AccountForm from "@/components/account/account-form";
+import LogoutButton from "@/components/account/logout-button";
+import AuthGuard from "@/components/wrapper/AuthGuard";
 
 export default function SettingsPage() {
+  const router = useRouter();
+
   const [Account, setAccount] = useState({
     name: "",
     phone: "",
   });
+
+  const user = useSelector(selectCurrentUser);
+  const initials =
+    user?.firstName && user?.lastName
+      ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}`
+      : "SB";
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -20,9 +34,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
-      {/* Sidebar Navigation */}
-      <BottomNav />
+    <AuthGuard redirectTo="/login" requireAuth>
+      <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
+        {/* Sidebar Navigation */}
+        <BottomNav />
 
       {/* Page Content */}
       <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
@@ -31,19 +46,32 @@ export default function SettingsPage() {
           <h1 className="text-xl font-semibold text-[#004aad] mb-4 md:mb-0">
             Settings
           </h1>
-          <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => router.push("/account")}
+          >
             <div className="w-10 h-10 rounded-full bg-[#004aad] text-white flex items-center justify-center font-semibold">
-              AR
+              {initials}
             </div>
             <div>
-              <div className="font-medium text-gray-800">Ankush Raj</div>
+              <div className="font-medium text-gray-800">
+                {user?.firstName || user?.lastName
+                  ? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()
+                  : "Unknown Owner"}
+              </div>
               <div className="text-sm text-gray-500">Bus Owner</div>
             </div>
           </div>
         </div>
-
+        
+        {/* Account Form */}
+        <AccountForm />
+        
+        {/* Logout Button */}
+        <LogoutButton />
+        
         {/* Settings Form */}
-        <section className="bg-white rounded-[12px] p-6 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
+        {/* <section className="bg-white rounded-[12px] p-6 mb-6 shadow max-w-5xl mx-auto w-full animate-fadeInUp">
           <h2 className="text-[#004aad] mb-4 text-lg font-semibold">
             Account Settings
           </h2>
@@ -108,8 +136,9 @@ export default function SettingsPage() {
               </button>
             </div>
           </form>
-        </section>
+        </section> */}
       </main>
     </div>
+    </AuthGuard>
   );
 }
