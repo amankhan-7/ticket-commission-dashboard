@@ -7,7 +7,7 @@ const LogoutButton = () => {
   const { logout: handleLogout } = useAuth();
 
   return (
-    <div className="my-6">
+    <div className="my-6 max-w-5xl mx-auto w-full flex justify-center">
       <Button
         variant="outline"
         onClick={handleLogout}

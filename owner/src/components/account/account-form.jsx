@@ -206,7 +206,7 @@ export default function AccountForm() {
       />
 
       {/* Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start">
+      <div className="flex flex-col  md:flex-row gap-3 md:item-start">
         <button
           type="submit"
           disabled={isLoading}
@@ -217,7 +217,7 @@ export default function AccountForm() {
         <button
           type="button"
           onClick={onCancel}
-          className="flex items-center gap-2 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md px-4 py-2 hover:bg-[#f5f7fa] transition duration-200"
+          className=" gap-2 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md px-4 py-2 hover:bg-[#f5f7fa] transition duration-200"
         >
           Cancel
         </button>
