@@ -76,13 +76,21 @@ export default function AccountForm() {
   }
 
   const handleFormSubmit = async (data) => {
+    if (!userType) {
+      console.warn("User type not loaded yet. Please wait.");
+      return; // prevent submission until we know the role
+    }
+
     try {
       let res;
 
-      if (userInfo.userType === "ticketExecutive") {
+      if (userType === "ticketExecutive") {
+        res = await updateTicketExecutive(data).unwrap();
+      } else if (userType === "counterPerson") {
         res = await updateCounterPerson(data).unwrap();
       } else {
-        res = await updateCounterPerson(data).unwrap();
+        console.error("Unknown user type:", userType);
+        return;
       }
 
       const updatedProfile = res.data.profile;
@@ -94,6 +102,7 @@ export default function AccountForm() {
 
       toast.success("Account updated successfully!");
     } catch (error) {
+      console.error(error);
       toast.error("Failed to update account. Please try again.");
     }
   };
@@ -124,7 +133,6 @@ export default function AccountForm() {
             <form onSubmit={form.handleSubmit(handleFormSubmit)}>
               {/* Grid Layout */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                
                 {/* First Name */}
                 <FormField
                   control={form.control}
@@ -215,7 +223,7 @@ export default function AccountForm() {
               <div className="flex flex-col md:flex-row gap-4 mt-6">
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !userType}
                   className="bg-[#004AAD] text-white px-5 py-2.5 rounded-lg font-semibold shadow hover:bg-[#013881] transition disabled:opacity-50"
                 >
                   {isLoading ? "Saving..." : "Save Changes"}

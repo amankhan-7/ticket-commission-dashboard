@@ -22,10 +22,10 @@ import {
   useGetOwnerBusesForBookingQuery,
   useGetBusStopsQuery,
   useSearchBusRoutesMutation,
-  useGetRouteSeatLayoutQuery,
+  // useGetRouteSeatLayoutQuery,
   useConfirmOnlineBookingPaymentMutation,
 } from "@/utils/redux/api/ownerApi/ownerBusSlice";
-import { useLockSeatsForBookingMutation, useCreateOfflineBookingMutation } from "@/utils/redux/api/adminExecutiveApi"
+import { useLockSeatsForBookingMutation, useCreateOfflineBookingMutation, useGetCounterRouteSeatLayoutQuery } from "@/utils/redux/api/adminExecutiveApi"
 import {
   useGetBusScheduleMutation,
   useSearchBusesQuery,
@@ -89,8 +89,8 @@ const OfflineBookingPage = () => {
     data: seatLayout,
     isLoading: seatLoading,
     error: seatError,
-  } = useGetRouteSeatLayoutQuery(
-    { routeId: selectedRoute?.routeId, travelDate },
+  } = useGetCounterRouteSeatLayoutQuery(
+    { routeId: selectedRoute?.routeId, journeyDate: travelDate},
     { skip: !selectedRoute || !travelDate }
   );
   const [lockSeatsMutation, { isLoading: lockLoading }] =

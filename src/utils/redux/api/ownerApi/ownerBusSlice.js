@@ -39,16 +39,16 @@ const busSlice = bookingBaseApi.injectEndpoints({
       invalidatesTags: ["AvailableSeats"],
     }),
 
-    getRouteSeatLayout: builder.query({
-      query: ({ routeId, travelDate }) => ({
-        url: `/offline-booking/route/${routeId}/seat-layout/${travelDate}`,
-        method: "GET",
-      }),
-      providesTags: (result, error, { routeId }) => [
-        { type: "SeatMap", id: routeId },
-      ],
-      transformResponse: (response) => response.data,
-    }),
+    // getRouteSeatLayout: builder.query({
+    //   query: ({ routeId, travelDate }) => ({
+    //     url: `/offline-booking/route/${routeId}/seat-layout/${travelDate}`,
+    //     method: "GET",
+    //   }),
+    //   providesTags: (result, error, { routeId }) => [
+    //     { type: "SeatMap", id: routeId },
+    //   ],
+    //   transformResponse: (response) => response.data,
+    // }),
 
     validateOwnerPin: builder.mutation({
       query: ({ pin }) => ({
@@ -127,7 +127,7 @@ export const {
   useGetOwnerBusesForBookingQuery,
   useGetBusStopsQuery,
   useSearchBusRoutesMutation,
-  useGetRouteSeatLayoutQuery,
+  // useGetRouteSeatLayoutQuery,
   useValidateOwnerPinMutation,
   // useLockSeatsForBookingMutation,
   // useCreateOfflineBookingMutation,

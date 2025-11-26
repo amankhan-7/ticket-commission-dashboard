@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useChangePinMutation } from "@/utils/redux/api/loginAuth";
+import { useAuth } from "@/hooks/useAuth";
 
 export function ChangePinCard() {
+  const { userType } = useAuth();
   const [open, setOpen] = useState(false);
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
@@ -20,8 +22,18 @@ export function ChangePinCard() {
 
     if (!currentPin || !newPin) return;
 
+    if (!userType) {
+      console.warn("User type not loaded yet. Please wait.");
+      return; // prevent submission until we know the role
+    }
+
     try {
-      await changePin({ currentPin, newPin }).unwrap();
+      await changePin({
+        currentPin,
+        newPin,
+        role: userType, // directly use the loaded role
+      }).unwrap();
+
       setOpen(false);
       setCurrentPin("");
       setNewPin("");
@@ -36,7 +48,6 @@ export function ChangePinCard() {
       style={{ borderTopColor: "#004AAD" }}
     >
       <CardContent className="p-0">
-
         {/* --- Collapsed Menu Item --- */}
         {!open && (
           <button
@@ -49,7 +60,9 @@ export function ChangePinCard() {
 
             <div className="flex-1 text-left">
               <div className="font-semibold text-black">Change PIN</div>
-              <div className="text-sm text-gray-500">Update your security PIN</div>
+              <div className="text-sm text-gray-500">
+                Update your security PIN
+              </div>
             </div>
 
             <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -62,7 +75,6 @@ export function ChangePinCard() {
             <h3 className="text-lg font-semibold">Change PIN</h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-
               {/* Old PIN */}
               <div className="flex flex-col space-y-1">
                 <Label>Old PIN</Label>
@@ -91,7 +103,7 @@ export function ChangePinCard() {
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !userType}
                   className="bg-[#004AAD] text-white w-full sm:w-auto"
                 >
                   {isLoading ? "Saving..." : "Submit"}

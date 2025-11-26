@@ -1,18 +1,16 @@
-import { apiSlice } from "./apiSlice";
+import { apiSlice } from "./apiSlice"; // base URL: api/v1/counter
 
 export const userApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // =======================
     // AUTHENTICATION
     // =======================
-
     counterPersonLogin: builder.mutation({
       query: ({ phone, pin }) => ({
         url: `/auth/counter-person/login`,
         method: "POST",
         body: { phone, pin },
       }),
-
       transformResponse: (res) => res.data,
       invalidatesTags: [{ type: "counterPerson", id: "CURRENT" }],
     }),
@@ -41,16 +39,18 @@ export const userApiSlice = apiSlice.injectEndpoints({
         method: "POST",
       }),
       transformResponse: (res) => res.data,
-      invalidatesTags: [{ type: "ticketExecutive",type: "counterPerson", id: "CURRENT" }],
+      invalidatesTags: [
+        { type: "counterPerson", id: "CURRENT" },
+        { type: "ticketExecutive", id: "CURRENT" },
+      ],
     }),
 
     // =======================
     // PIN MANAGEMENT
     // =======================
-
     verifyPin: builder.mutation({
       query: ({ pin }) => ({
-        url: `/auth/verify-pin`,
+        url: `/auth/pin/verify`,
         method: "POST",
         body: { pin },
       }),
@@ -58,26 +58,31 @@ export const userApiSlice = apiSlice.injectEndpoints({
     }),
 
     changePin: builder.mutation({
-      query: ({ currentPin, newPin }) => ({
-        url: `/auth/change-pin`,
+      query: ({ currentPin, newPin, role }) => ({
+        url: role === "counterPerson"
+          ? `/profile/counter-person/pin`
+          : `/profile/ticket-executive/pin`,
         method: "PATCH",
         body: { currentPin, newPin },
       }),
       transformResponse: (res) => res.data,
+      invalidatesTags: [
+        { type: "counterPerson", id: "CURRENT" },
+        { type: "ticketExecutive", id: "CURRENT" },
+      ],
     }),
 
     // =======================
     // PROFILE MANAGEMENT
     // =======================
-
     getCounterPersonProfile: builder.query({
-      query: () => `/auth/counter-person/profile`,
+      query: () => `/profile/counter-person`,
       providesTags: [{ type: "counterPerson", id: "CURRENT" }],
     }),
 
     updateCounterPersonProfile: builder.mutation({
       query: (body) => ({
-        url: `/auth/counter-person/profile`,
+        url: `/profile/counter-person`,
         method: "PATCH",
         body,
       }),
@@ -85,13 +90,13 @@ export const userApiSlice = apiSlice.injectEndpoints({
     }),
 
     getTicketExecutiveProfile: builder.query({
-      query: () => `/auth/ticket-executive/profile`,
-      providesTags: [{ type: "ticketExecitive", id: "CURRENT" }],
+      query: () => `/profile/ticket-executive`,
+      providesTags: [{ type: "ticketExecutive", id: "CURRENT" }],
     }),
 
     updateTicketExecutiveProfile: builder.mutation({
       query: (body) => ({
-        url: `/auth/ticket-executive/profile`,
+        url: `/profile/ticket-executive`,
         method: "PATCH",
         body,
       }),

@@ -7,7 +7,7 @@ import {
 } from "@/utils/redux/api/adminExecutiveApi";
 import AuthGuard from "@/components/wrapper/AuthGuard";
 
-export default function DocumentsStep({ counterPersonId, onAllDocsUploaded }) {
+export default function DocumentsStep({ counterPersonId }) {
   const { data, isLoading } =
     useGetCounterPersonDocumentsQuery(counterPersonId);
   const [uploadDocument] = useUploadDocumentMutation();
@@ -90,11 +90,8 @@ export default function DocumentsStep({ counterPersonId, onAllDocsUploaded }) {
         </div>
 
         {/* DOCUMENT LIST CARD */}
-        <div
-          className="bg-white rounded-lg shadow-lg "
-          
-        >
-          <div className="px-6 py-4 bg-[#004AAD] rounded-t-4">
+        <div className="bg-white shadow-lg ">
+          <div className="px-6 py-4 bg-[#004AAD] rounded-t-2xl">
             <h2 className="text-2xl font-bold text-white">
               Uploaded Documents
             </h2>
@@ -129,19 +126,6 @@ export default function DocumentsStep({ counterPersonId, onAllDocsUploaded }) {
           </div>
         </div>
       </main>
-      <div className="text-center mt-8">
-        <button
-          disabled={!canContinue}
-          onClick={onAllDocsUploaded}
-          className={`px-6 py-3 rounded-lg font-bold shadow ${
-            canContinue
-              ? "bg-[#004AAD] text-white hover:opacity-90"
-              : "bg-gray-300 text-gray-600 cursor-not-allowed"
-          }`}
-        >
-          Continue
-        </button>
-      </div>
     </div>
     //</AuthGuard>
   );

@@ -137,12 +137,22 @@ export const counterPersonApi = apiSlice.injectEndpoints({
       transformResponse: (res) => res.data,
       invalidatesTags: ["Bookings", "SeatMap"],
     }),
+    getCounterRouteSeatLayout: builder.query({
+      query: ({ routeId, journeyDate }) => ({
+        url: `counter-booking/route/${routeId}/seat-layout/${journeyDate}`,
+        method: "GET",
+      }),
+      providesTags: (result, error, { routeId }) => [
+        { type: "SeatMap", id: routeId },
+      ],
+      transformResponse: (response) => response.data, // only if your backend wraps data
+    }),
 
     lockSeatsForBooking: builder.mutation({
-      query: ({ routeId, seatNumbers, journeyDate,  counterPersonId }) => ({
+      query: ({ routeId, seatNumbers, journeyDate, counterPersonId }) => ({
         url: "/bookings/lock-seats",
         method: "POST",
-        body: { routeId, seatNumbers, journeyDate,  counterPersonId },
+        body: { routeId, seatNumbers, journeyDate, counterPersonId },
       }),
       transformResponse: (response) => response.data,
       invalidatesTags: (result, error, { routeId }) => [
@@ -195,6 +205,7 @@ export const {
   useGetCounterBookingQuery,
   useGetCounterBookingStatsQuery,
   useCancelCounterBookingMutation,
+  useGetCounterRouteSeatLayoutQuery,
   useLockSeatsForBookingMutation,
   useCreateOfflineBookingMutation,
   useGetOfflineBookingHistoryQuery,
