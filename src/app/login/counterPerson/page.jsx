@@ -32,13 +32,13 @@ function LoginComponent() {
         await dispatch(
           setCredentials({
             user: result.counterPerson,
-            userType: "counter",
+            userType: "counterPerson",
             token: result.token,
           })
         ).unwrap();
 
         toast.success("Login successful!");
-        router.push("/"); // redirect to dashboard/home
+        router.push("/commission"); // redirect to dashboard/home
       } else {
         toast.error("Login failed. Please check your phone and PIN.");
       }

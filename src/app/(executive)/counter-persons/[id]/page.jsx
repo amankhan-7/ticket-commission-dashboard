@@ -1,11 +1,11 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import BottomNav from "@/components/ui/BottomNav";
 import {
   useGetTicketExecutiveByIdQuery,
   useGetTicketExecutiveStatsQuery,
 } from "@/redux/services/ticketExecutiveApi";
+import { ExecutiveNav } from "@/components/ui/executiveNavbar";
 
 export default function ExecutiveDetails() {
   const { id } = useParams();
@@ -37,7 +37,7 @@ export default function ExecutiveDetails() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-20">
-      <BottomNav />
+      <ExecutiveNav />
 
       <h1 className="text-4xl font-bold mb-0 bg-gradient-to-r from-[#013881] via-[#014fb5] to-blue-100 bg-clip-text text-transparent">
         {ex.firstName} {ex.lastName}

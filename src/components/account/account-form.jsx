@@ -25,6 +25,7 @@ import { FormSkeleton } from "@/components/ui/skeletons";
 
 export default function AccountForm() {
   const {
+    userType,
     user: userInfo,
     updateUser: updateUserInfo,
     isLoading: isAuthLoading,
@@ -67,7 +68,8 @@ export default function AccountForm() {
     }
   }, [userInfo, form]);
 
-  if (!isMounted) {
+  // Block render until user info AND userType are fully available
+  if (!isMounted || isAuthLoading || !userType) {
     return (
       <div className="flex items-center justify-center h-[200px]">
         <FormSkeleton />

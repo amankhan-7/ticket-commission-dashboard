@@ -30,14 +30,14 @@ function LoginComponent() {
       if (result) {
         await dispatch(
           setCredentials({
-            executive: result.executive,
-            userType: "executive",
+            user: result.executive,
+            userType: "ticketExecutive",
             token: result.token,
           })
         ).unwrap();
 
         toast.success("Login successful!");
-        router.push("/"); // redirect to dashboard/home
+        router.push("/counterpersons"); //
       } else {
         toast.error("Login failed. Please check your phone and PIN.");
       }

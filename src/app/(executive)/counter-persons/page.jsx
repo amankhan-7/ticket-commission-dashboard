@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useMemo } from "react";
-import BottomNav from "@/components/ui/BottomNav";
 import { useRouter } from "next/navigation";
 import { useGetAllTicketExecutivesQuery } from "@/utils/redux/api/executiveApi";
 
 import { FaTicketAlt } from "react-icons/fa";
+import { ExecutiveNav } from "@/components/ui/executiveNavbar";
 
 export default function ExecutiveCommission() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export default function ExecutiveCommission() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-20">
-      <BottomNav />
+      <ExecutiveNav />
 
       <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
         <h1 className="text-4xl font-extrabold text-center mb-8 bg-gradient-to-r from-[#003374] via-[#004aad] to-blue-200 bg-clip-text text-transparent">

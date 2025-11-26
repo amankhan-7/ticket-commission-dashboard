@@ -5,33 +5,42 @@ import {
   useUploadDocumentMutation,
   useDeleteDocumentMutation,
 } from "@/utils/redux/api/adminExecutiveApi";
-import AuthGuard from "@/components/wrapper/AuthGuard";
 
 export default function DocumentsStep({ counterPersonId }) {
   const { data, isLoading } =
     useGetCounterPersonDocumentsQuery(counterPersonId);
-  const [uploadDocument] = useUploadDocumentMutation();
+
+  const [uploadDocument, { isLoading: uploading }] =
+    useUploadDocumentMutation();
+  const [deleteDocument] = useDeleteDocumentMutation();
 
   const [file, setFile] = useState(null);
   const [type, setType] = useState("");
 
   const upload = async () => {
     if (!file || !type) return;
+
     await uploadDocument({
-      counterPersonId: counterPersonId,
+      counterPersonId,
       documentType: type,
       file,
     }).unwrap();
 
     setFile(null);
+    setType("");
+  };
+
+  const deleteDoc = async (documentId) => {
+    await deleteDocument({
+      counterPersonId,
+      documentId,
+    }).unwrap();
   };
 
   if (isLoading)
     return <div className="text-center py-10 text-gray-500">Loading...</div>;
 
-  const canContinue = data?.documents?.length > 0;
   return (
-    //<AuthGuard>
     <div className="max-w-6xl mx-auto px-4 py-20">
       <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
         {/* PAGE HEADING */}
@@ -77,20 +86,26 @@ export default function DocumentsStep({ counterPersonId }) {
               />
             </div>
 
-            <div className="flex items-end">
-              <button
-                onClick={upload}
-                className="w-full py-3 rounded-lg text-white font-bold shadow-md hover:opacity-90 transition"
-                style={{ background: "#004AAD" }}
-              >
-                Upload
-              </button>
-            </div>
+            {uploading ? (
+              <div className="flex items-end justify-center">
+                <div className="w-8 h-8 border-4 border-gray-300 border-t-[#004AAD] rounded-full animate-spin"></div>
+              </div>
+            ) : (
+              <div className="flex items-end">
+                <button
+                  onClick={upload}
+                  className="w-full py-3 rounded-lg text-white font-bold shadow-md hover:opacity-90 transition"
+                  style={{ background: "#004AAD" }}
+                >
+                  Upload
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* DOCUMENT LIST CARD */}
-        <div className="bg-white shadow-lg ">
+        <div className="bg-white shadow-lg">
           <div className="px-6 py-4 bg-[#004AAD] rounded-t-2xl">
             <h2 className="text-2xl font-bold text-white">
               Uploaded Documents
@@ -127,6 +142,5 @@ export default function DocumentsStep({ counterPersonId }) {
         </div>
       </main>
     </div>
-    //</AuthGuard>
   );
 }

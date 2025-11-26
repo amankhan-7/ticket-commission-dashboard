@@ -9,23 +9,33 @@ import {
 } from "@/utils/redux/api/adminExecutiveApi";
 import { useAuth } from "@/hooks/useAuth";
 import AuthGuard from "@/components/wrapper/AuthGuard";
+import { LoadingSpinnerSkeleton } from "@/components/ui/skeletons";
+import { FaTrash } from "react-icons/fa";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const userId = user?.id;
 
-  const { data, isLoading } = useGetCounterBookingQuery(
-    userId ? { counterPersonId: userId, page: 1, limit: 20 } : skipToken
+  const skip = !userId;
+
+  const [cancelBooking, { isLoading: isCancelling }] =
+    useCancelCounterBookingMutation();
+
+  const bookingsQuery = useGetCounterBookingQuery(
+    skip ? skipToken : { counterPersonId: userId, page: 1, limit: 20 }
   );
 
-  const { data: statsResponse, isLoading: isLoadingStats } =
-    useGetCounterBookingStatsQuery({
-      counterPersonId: userId,
-      startDate: null,
-      endDate: null,
-    });
-  const bookings = data?.data?.bookings || [];
-  const stats = statsResponse?.data?.stats || {};
+  const statsQuery = useGetCounterBookingStatsQuery(
+    skip ? skipToken : { counterPersonId: userId }
+  );
+
+  const isLoading = bookingsQuery.isLoading || statsQuery.isLoading;
+
+  if (skip || isLoading) return <LoadingSpinnerSkeleton />;
+
+  const bookings = bookingsQuery.data?.data?.bookings ?? [];
+  const stats = statsQuery.data?.data?.stats ?? {};
+
   const {
     totalBookings = 0,
     totalRevenue = 0,
@@ -34,6 +44,8 @@ export default function Dashboard() {
     todayBookings = 0,
     todayRevenue = 0,
   } = stats;
+
+  if (!userId) return <LoadingSpinnerSkeleton />;
 
   return (
     <AuthGuard redirectTo="/login" requireAuth>
@@ -131,6 +143,7 @@ export default function Dashboard() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {booking.passengerName}
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {booking.seatNumbers?.join(", ") || "-"}
                       </td>
@@ -141,6 +154,31 @@ export default function Dashboard() {
 
                       <td className="px-6 py-4 whitespace-nowrap text-md font-semibold text-black">
                         ₹{booking.amount.toLocaleString()}
+                      </td>
+
+                      {/* CANCEL ICON */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-red-500 cursor-pointer">
+                        <FaTrash
+                          className="h-5 w-5 hover:text-red-700"
+                          onClick={async () => {
+                            if (
+                              confirm(
+                                "Are you sure you want to cancel this booking?"
+                              )
+                            ) {
+                              try {
+                                await cancelBooking({
+                                  bookingId: booking._id,
+                                  counterPersonId: userId,
+                                  reason: "Cancelled via dashboard",
+                                }).unwrap();
+                                alert("Booking cancelled successfully");
+                              } catch (err) {
+                                alert("Failed to cancel booking");
+                              }
+                            }
+                          }}
+                        />
                       </td>
                     </tr>
                   ))}

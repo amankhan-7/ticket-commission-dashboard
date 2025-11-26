@@ -26,7 +26,15 @@ export const ticketExecutiveApi = apiSlice.injectEndpoints({
       }),
       providesTags: ["TicketExecutive"],
     }),
-
+//temporary*************************************************************************************************************************************
+      getAllCounterPersons: builder.query({
+      query: (params) => ({
+        url: "/counterPerson",
+        method: "GET",
+        params, // { tenentId, status, page, limit, search }
+      }),
+      providesTags: ["counterPerson"],
+    }),
     // =======================
     // GET EXECUTIVES BY TENANT
     // =======================
@@ -129,6 +137,8 @@ export const {
   useGetTicketExecutiveStatsQuery,
   useAssignCounterToExecutiveMutation,
   useRemoveCounterFromExecutiveMutation,
+  //************************************ */
+  useGetAllCounterPersonsQuery,
 } = ticketExecutiveApi;
 
 

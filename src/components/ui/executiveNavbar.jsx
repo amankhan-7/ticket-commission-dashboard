@@ -2,21 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  FaUser,
-  FaTicketAlt,
-  FaPercentage,
-  FaReceipt,
-} from "react-icons/fa";
+import { FaUser, FaTicketAlt, FaFileInvoiceDollar, FaPercentage, FaReceipt } from "react-icons/fa";
 import clsx from "clsx";
 
-export default function CounterNav() {
+export default function executiveNavbar() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: "Commission", icon: FaPercentage, href: "/commission" },
-    { label: "Booking", icon: FaTicketAlt, href: "/booking" },
-    { label: "Documents", icon: FaReceipt, href: "/documents" },
+    { label: "Counters", icon: FaFileInvoiceDollar, href: "/counterpersons" },
+    { label: "Add Counter", icon: FaTicketAlt, href: "/addcounter" },
     { label: "Profile", icon: FaUser, href: "/account" },
   ];
 

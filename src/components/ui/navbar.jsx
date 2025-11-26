@@ -7,17 +7,34 @@ import {
   FaTicketAlt,
   FaPercentage,
   FaReceipt,
+  FaAccessibleIcon,
+  FaFileExcel,
+  FaDailymotion,
+  FaListAlt,
 } from "react-icons/fa";
 import clsx from "clsx";
 
-export default function CounterNav() {
+export default function Navbar() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: "Commission", icon: FaPercentage, href: "/commission" },
-    { label: "Booking", icon: FaTicketAlt, href: "/booking" },
-    { label: "Documents", icon: FaReceipt, href: "/documents" },
-    { label: "Profile", icon: FaUser, href: "/account" },
+    { label: "Add Counter", icon: FaReceipt, href: "/admin/addcounter" },
+    { label: "Add Executive", icon: FaTicketAlt, href: "/admin/addexecutive" },
+    {
+      label: "Assign Counter",
+      icon: FaFileExcel,
+      href: "/admin/assign-counter",
+    },
+    {
+      label: "Verify Docs",
+      icon: FaDailymotion,
+      href: "/admin/counter-verfication/pending",
+    },
+    {
+      label: "All Executives",
+      icon: FaListAlt,
+      href: "/admin/ticket-executive",
+    },
   ];
 
   return (

@@ -11,23 +11,25 @@ export const counterPersonApi = apiSlice.injectEndpoints({
       invalidatesTags: ["CounterPerson"],
     }),
 
+    getCounterPersonDocuments: builder.query({
+      query: (counterPersonId) => `/onboarding/${counterPersonId}/documents`,
+      providesTags: (result, error, id) => [{ type: "CounterPerson", id }],
+    }),
+
     uploadDocument: builder.mutation({
       query: ({ counterPersonId, documentType, file }) => {
         const formData = new FormData();
         formData.append("documentType", documentType);
         formData.append("file", file);
         return {
-          url: `/${counterPersonId}/documents`,
+          url: `/onboarding/${counterPersonId}/documents`,
           method: "POST",
           body: formData,
         };
       },
-      invalidatesTags: ["Documents"],
-    }),
-
-    getCounterPersonDocuments: builder.query({
-      query: (counterPersonId) => `/${counterPersonId}/documents`,
-      providesTags: (result, error, arg) => [{ type: "Documents", id: arg }],
+      invalidatesTags: (r, e, { counterPersonId }) => [
+        { type: "CounterPerson", id: counterPersonId },
+      ],
     }),
 
     deleteDocument: builder.mutation({
@@ -38,20 +40,30 @@ export const counterPersonApi = apiSlice.injectEndpoints({
       invalidatesTags: ["Documents"],
     }),
 
+    // =======================
+    // ADMIN SIDE ENDPOINTS
+    // =======================
+
     getPendingCounterPersons: builder.query({
       query: ({ page = 1, limit = 10 } = {}) =>
         `/admin/pending?page=${page}&limit=${limit}`,
       providesTags: ["CounterPerson"],
     }),
 
-    // =======================
-    // ADMIN SIDE ENDPOINTS
-    // =======================
+    getCounterPersonForVerification: builder.query({
+      query: (counterPersonId) => `/admin/verification/${counterPersonId}`,
+      transformResponse: (response) => response.data.counterPerson,
+      providesTags: (result, error, id) => [
+        { type: "CounterPerson", id },
+        "VerificationStatus",
+      ],
+    }),
 
     verifyDocument: builder.mutation({
-      query: ({ counterPersonId, documentId }) => ({
-        url: `/onboarding/admin/verify-document/${counterPersonId}/${documentId}`,
+      query: ({ counterPersonId, documentId, body }) => ({
+        url: `/admin/verify-document/${counterPersonId}/${documentId}`,
         method: "PATCH",
+        body,
       }),
       invalidatesTags: (r, e, { counterPersonId }) => [
         { type: "CounterPerson", id: counterPersonId },
@@ -72,9 +84,10 @@ export const counterPersonApi = apiSlice.injectEndpoints({
     }),
 
     rejectCounterPerson: builder.mutation({
-      query: ({ counterPersonId }) => ({
-        url: `/onboarding/admin/reject/${counterPersonId}`,
+      query: ({ counterPersonId, reason }) => ({
+        url: `/admin/reject/${counterPersonId}`,
         method: "PATCH",
+        body: { reason },
       }),
       invalidatesTags: (r, e, { counterPersonId }) => [
         { type: "CounterPerson", id: counterPersonId },
@@ -89,11 +102,6 @@ export const counterPersonApi = apiSlice.injectEndpoints({
         { type: "VerificationStatus", id },
         { type: "CounterPerson", id },
       ],
-    }),
-
-    getCounterPersonForVerification: builder.query({
-      query: (counterPersonId) => `/onboarding/${counterPersonId}/documents`,
-      providesTags: (result, error, id) => [{ type: "counterPerson", id }],
     }),
 
     // =======================
@@ -137,6 +145,7 @@ export const counterPersonApi = apiSlice.injectEndpoints({
       transformResponse: (res) => res.data,
       invalidatesTags: ["Bookings", "SeatMap"],
     }),
+
     getCounterRouteSeatLayout: builder.query({
       query: ({ routeId, journeyDate }) => ({
         url: `counter-booking/route/${routeId}/seat-layout/${journeyDate}`,
@@ -145,7 +154,7 @@ export const counterPersonApi = apiSlice.injectEndpoints({
       providesTags: (result, error, { routeId }) => [
         { type: "SeatMap", id: routeId },
       ],
-      transformResponse: (response) => response.data, // only if your backend wraps data
+      transformResponse: (response) => response.data,
     }),
 
     lockSeatsForBooking: builder.mutation({
@@ -169,6 +178,7 @@ export const counterPersonApi = apiSlice.injectEndpoints({
       transformResponse: (response) => response.data,
       invalidatesTags: ["Booking", "AvailableSeats"],
     }),
+
     getOfflineBookingHistory: builder.query({
       query: ({ page = 1, limit = 10 }) => ({
         url: `/bookings/offline-booking/history?page=${page}&limit=${limit}`,
@@ -187,20 +197,27 @@ export const counterPersonApi = apiSlice.injectEndpoints({
 });
 
 export const {
-  // User hooks
+  // =======================
+  // USER HOOKS
+  // =======================
   useCreateCounterPersonMutation,
-  useUploadDocumentMutation,
   useGetCounterPersonDocumentsQuery,
+  useUploadDocumentMutation,
   useDeleteDocumentMutation,
-  useGetPendingCounterPersonsQuery,
 
-  // Admin hooks
+  // =======================
+  // ADMIN HOOKS
+  // =======================
+  useGetPendingCounterPersonsQuery,
+  useGetCounterPersonForVerificationQuery,
   useVerifyDocumentMutation,
   useApproveCounterPersonMutation,
   useRejectCounterPersonMutation,
   useGetCounterPersonVerificationStatusQuery,
-  useGetCounterPersonForVerificationQuery,
 
+  // =======================
+  // COUNTER BOOKING HOOKS
+  // =======================
   useCreateCounterBookingMutation,
   useGetCounterBookingQuery,
   useGetCounterBookingStatsQuery,
