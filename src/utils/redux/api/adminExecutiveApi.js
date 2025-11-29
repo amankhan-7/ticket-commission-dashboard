@@ -15,7 +15,6 @@ export const counterPersonApi = apiSlice.injectEndpoints({
       query: (counterPersonId) => `/onboarding/${counterPersonId}/documents`,
       providesTags: (result, error, id) => [{ type: "CounterPerson", id }],
     }),
-
     uploadDocument: builder.mutation({
       query: ({ counterPersonId, documentType, file }) => {
         const formData = new FormData();
@@ -39,6 +38,14 @@ export const counterPersonApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["Documents"],
     }),
+    cancelCounterBooking: builder.mutation({
+      query: (body) => ({
+        url: "/bookings/cancel",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["CounterBookings", "CounterBookingStats"],
+    }),
 
     // =======================
     // ADMIN SIDE ENDPOINTS
@@ -47,7 +54,7 @@ export const counterPersonApi = apiSlice.injectEndpoints({
     getPendingCounterPersons: builder.query({
       query: ({ page = 1, limit = 10 } = {}) =>
         `/admin/pending?page=${page}&limit=${limit}`,
-      providesTags: ["CounterPerson"],
+      providesTags: ["counterPerson"],
     }),
 
     getCounterPersonForVerification: builder.query({
@@ -204,6 +211,7 @@ export const {
   useGetCounterPersonDocumentsQuery,
   useUploadDocumentMutation,
   useDeleteDocumentMutation,
+  useCancelCounterBookingMutation,
 
   // =======================
   // ADMIN HOOKS
@@ -221,7 +229,6 @@ export const {
   useCreateCounterBookingMutation,
   useGetCounterBookingQuery,
   useGetCounterBookingStatsQuery,
-  useCancelCounterBookingMutation,
   useGetCounterRouteSeatLayoutQuery,
   useLockSeatsForBookingMutation,
   useCreateOfflineBookingMutation,

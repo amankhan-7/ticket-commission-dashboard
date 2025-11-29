@@ -38,7 +38,7 @@ function LoginComponent() {
         ).unwrap();
 
         toast.success("Login successful!");
-        router.push("/commission"); // redirect to dashboard/home
+        router.push("/booking-dashboard"); // redirect to dashboard/home
       } else {
         toast.error("Login failed. Please check your phone and PIN.");
       }

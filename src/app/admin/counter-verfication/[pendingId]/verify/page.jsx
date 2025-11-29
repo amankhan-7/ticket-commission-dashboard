@@ -5,14 +5,15 @@ import {
   useGetCounterPersonForVerificationQuery,
   useApproveCounterPersonMutation,
   useRejectCounterPersonMutation,
-  useVerifyDocumentMutation
+  useVerifyDocumentMutation,
 } from "@/utils/redux/api/adminExecutiveApi";
 import { toast } from "sonner";
 
 export default function VerifyCounterPersonPage() {
-  const { id } = useParams();
+  const { counterPersonId } = useParams();
 
-  const { data, isLoading, refetch } = useGetCounterPersonForVerificationQuery(id);
+  const { data, isLoading, refetch } =
+    useGetCounterPersonForVerificationQuery(counterPersonId);
   const [verifyDocument] = useVerifyDocumentMutation();
   const [approve, { isLoading: approving }] = useApproveCounterPersonMutation();
   const [reject, { isLoading: rejecting }] = useRejectCounterPersonMutation();
@@ -30,7 +31,7 @@ export default function VerifyCounterPersonPage() {
   const handleVerify = async (docId) => {
     try {
       await verifyDocument({
-        counterPersonId: id,
+        counterPersonId: counterPersonId,
         documentId: docId,
         body: { status: "verified" },
       }).unwrap();
@@ -48,7 +49,7 @@ export default function VerifyCounterPersonPage() {
 
     try {
       await verifyDocument({
-        counterPersonId: id,
+        counterPersonId: counterPersonId,
         documentId: docId,
         body: { status: "rejected", rejectionReason: reason },
       }).unwrap();
@@ -59,7 +60,6 @@ export default function VerifyCounterPersonPage() {
       toast.error(err?.data?.message || "Failed to reject document");
     }
   };
-
 
   // Approve / Reject Counter Person Handler
   const handleApprove = async () => {

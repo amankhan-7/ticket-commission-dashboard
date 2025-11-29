@@ -62,6 +62,7 @@ export const apiSlice = createApi({
     "Bookings",
     "counterPerson",
     "TicketExecutive",
+    "CounterPerson"
   ],
   endpoints: () => ({}),
 });

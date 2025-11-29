@@ -10,20 +10,20 @@ import {
 } from "react-icons/fa";
 import clsx from "clsx";
 
-export default function CounterNav() {
+export default function BottomNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: "Commission", icon: FaPercentage, href: "/commission" },
-    { label: "Booking", icon: FaTicketAlt, href: "/booking" },
+    { label: "Commission", icon: FaPercentage, href: "/booking-stats" },
+    { label: "Booking", icon: FaTicketAlt, href: "/booking-dashboard" },
     { label: "Documents", icon: FaReceipt, href: "/documents" },
     { label: "Profile", icon: FaUser, href: "/account" },
   ];
 
   return (
     <nav
-      className="bg-white shadow-lg shadow-gray-300 z-50
-                 fixed bottom-0 w-full h-16
+      className="bg-white shadow-lg shadow-gray-300 z-50 
+                 fixed bottom-0 w-full h-16 
                  lg:top-0 lg:left-0 lg:bottom-auto lg:w-18 lg:h-screen lg:flex lg:flex-col"
     >
       <ul

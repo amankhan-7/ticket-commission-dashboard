@@ -1,1 +1,0 @@
-// getCounterPersonDocuments → GET /onboarding/:counterPersonId/documents

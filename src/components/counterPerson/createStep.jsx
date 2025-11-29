@@ -6,6 +6,7 @@ import AuthGuard from "@/components/wrapper/AuthGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { PageSkeleton } from "../ui/skeletons";
 import ExecutiveNavbar from "@/components/ui/executiveNavbar";
+import Navbar from "@/components/ui/navbar";
 
 export default function CreateCounterPersonPage({ onCreated }) {
   const [form, setForm] = useState({
@@ -50,8 +51,14 @@ export default function CreateCounterPersonPage({ onCreated }) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-20">
-      {userType === "counterPerson" && <BottomNav />}
-      {userType === "ticketExecutive" && <ExecutiveNavbar />}
+      {/* conditional navbar rendering */}
+      {userType === "counterPerson" ? (
+        <BottomNav />
+      ) : userType === "ticketExecutive" ? (
+        <ExecutiveNavbar />
+      ) : (
+        <Navbar />
+      )}
 
       <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
         <h1 className="text-4xl font-extrabold text-center mb-8 bg-gradient-to-r from-[#013881] via-[#004aad] to-blue-300 bg-clip-text text-transparent">

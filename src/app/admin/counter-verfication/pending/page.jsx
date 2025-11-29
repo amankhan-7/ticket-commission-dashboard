@@ -46,7 +46,7 @@ export default function AdminPendingPage() {
                   <div
                     onClick={() =>
                       router.push(
-                        `admin/counter-verification/verify/${person._id}`
+                        `/admin/counter/${person._id}`
                       )
                     }
                     key={person._id}

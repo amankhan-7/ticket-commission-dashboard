@@ -18,13 +18,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/utils/redux/slices/authSlice";
-import {
-  useGetOwnerBusesForBookingQuery,
-  useGetBusStopsQuery,
-  useSearchBusRoutesMutation,
-  // useGetRouteSeatLayoutQuery,
-  useConfirmOnlineBookingPaymentMutation,
-} from "@/utils/redux/api/ownerApi/ownerBusSlice";
+
 import { useLockSeatsForBookingMutation, useCreateOfflineBookingMutation, useGetCounterRouteSeatLayoutQuery } from "@/utils/redux/api/adminExecutiveApi"
 import {
   useGetBusScheduleMutation,
@@ -97,15 +91,15 @@ const OfflineBookingPage = () => {
     useLockSeatsForBookingMutation();
   const [createBookingMutation, { isLoading: bookingLoading }] =
     useCreateOfflineBookingMutation();
-  const [confirmOnlinePaymentMutation] =
-    useConfirmOnlineBookingPaymentMutation();
+  // const [confirmOnlinePaymentMutation] =
+  //   useConfirmOnlineBookingPaymentMutation();
 
-  const { processOnlinePayment } = usePaymentHandlers(
-    createBookingMutation,
-    confirmOnlinePaymentMutation,
-    setIsProcessingPayment,
-    user
-  );
+  // const { processOnlinePayment } = usePaymentHandlers(
+  //   createBookingMutation,
+  //   confirmOnlinePaymentMutation,
+  //   setIsProcessingPayment,
+  //   user
+  // );
 
   const searchRoutes = async () => {
     if (!fromCity || !toCity || !travelDate) {
@@ -990,7 +984,7 @@ const OfflineBookingPage = () => {
         {/* Header */}
 
         <h1 className="text-4xl pb-5 font-extrabold text-center mb-8 mt-14 bg-gradient-to-r from-[#003374] via-[#004aad] to-blue-100 bg-clip-text text-transparent">
-          Select a Route to booking
+          Select a Route for booking
         </h1>
 
         <div className="max-w-5xl mx-auto">

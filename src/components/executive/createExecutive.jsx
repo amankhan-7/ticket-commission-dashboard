@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useCreateTicketExecutiveMutation } from "@/utils/redux/api/executiveApi";
-import BottomNav from "@/components/ui/BottomNav";
+import Navbar from "@/components/ui/BottomNav";
 import AuthGuard from "@/components/wrapper/AuthGuard";
 import { toast } from "sonner";
 
@@ -58,16 +58,17 @@ export default function CreateTicketExecutivePage({ onCreated }) {
 
   return (
     // <AuthGuard>
-      <div className="max-w-6xl mx-auto px-4 py-20">
-        <BottomNav />
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#f8f9fa]">
+      <Navbar />
 
-        <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
-          <h1 className="text-4xl font-extrabold text-center mb-8 bg-gradient-to-r from-[#013881] via-[#004aad] to-blue-300 bg-clip-text text-transparent">
-            Add Ticket Executive
-          </h1>
+      <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
+        <h1 className="text-2xl md:text-4xl mt-20 font-extrabold text-center mb-8 bg-gradient-to-r from-[#013881] via-[#004aad] to-blue-300 bg-clip-text text-transparent">
+          Add Ticket Executive
+        </h1>
 
+        <div className="md:flex md:flex-col md:items-center md:gap-8">
           <div
-            className="bg-white rounded-xl shadow-lg p-8 border-t-4"
+            className="bg-white md:w-4xl rounded-xl shadow-lg p-8 border-t-4"
             style={{ borderTopColor: "#004AAD" }}
           >
             <h2 className="text-2xl font-bold mb-6 text-[#004AAD]">
@@ -78,7 +79,6 @@ export default function CreateTicketExecutivePage({ onCreated }) {
               onSubmit={handleSubmit}
               className="grid grid-cols-1 md:grid-cols-2 gap-6"
             >
-              {/* Required Fields */}
               {[
                 "tenentId",
                 "firstName",
@@ -104,7 +104,6 @@ export default function CreateTicketExecutivePage({ onCreated }) {
                 </div>
               ))}
 
-              {/* Bank Details (optional) */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Bank Account Number
@@ -150,7 +149,6 @@ export default function CreateTicketExecutivePage({ onCreated }) {
                 />
               </div>
 
-              {/* Submit Button */}
               <div className="col-span-1 md:col-span-2 mt-4">
                 <button
                   disabled={isLoading}
@@ -162,8 +160,9 @@ export default function CreateTicketExecutivePage({ onCreated }) {
               </div>
             </form>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
+    </div>
     // </AuthGuard>
   );
 }

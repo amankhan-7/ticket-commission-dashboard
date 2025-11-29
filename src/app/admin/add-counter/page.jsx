@@ -4,20 +4,21 @@ import { useAuth } from "@/hooks/useAuth"; // adjust path as needed
 
 import CreateStep from "@/components/counterPerson/createStep";
 import DocumentStep from "@/components/counterPerson/documentStep";
-import VerifyStep from "@/components/counterPerson/verifyStep";
+
 
 export default function Page() {
   const { user } = useAuth();
   const userType = user?.userType; 
 
   const [step, setStep] = useState(0);
+  const [done, setDone ] = useState(false);
   const [counterPersonId, setCounterPersonId] = useState(null);
   const [createdData, setCreatedData] = useState(null);
 
   // Role-based rules
   const canCreate = ["admin", "superAdmin"].includes(userType);
   const canUpload = ["counterPerson", "admin", "superAdmin"].includes(userType);
-  const canVerify = ["counterPerson", "ticketExecutive", "admin", "superAdmin"].includes(userType);
+
 
   const next = () => setStep((s) => s + 1);
   const prev = () => setStep((s) => Math.max(0, s - 1));
@@ -42,23 +43,14 @@ export default function Page() {
       {step === 1 && canUpload && (
         <DocumentStep
           counterPersonId={counterPersonId}
-          onAllDocsUploaded={() => next()}
+          onAllDocsUploaded={() => setDone(true)}
           onBack={prev}
         />
       )}
-
-      {/* STEP 2 — VERIFY DOCUMENTS */}
-      {step === 2 && canVerify && (
-        <VerifyStep
-          counterPersonId={counterPersonId}
-          onBack={prev}
-        />
-      )}
-
+      {done ? <h1>The Owner is Created now you can verify it </h1>: null}
       {/* CATCH: user hits a step they shouldn't access */}
       {((step === 0 && !canCreate) ||
-        (step === 1 && !canUpload) ||
-        (step === 2 && !canVerify)) && (
+        (step === 1 && !canUpload)) && (
         <p>You are not allowed to access this step.</p>
       )}
     </main>

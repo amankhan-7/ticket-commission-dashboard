@@ -37,7 +37,7 @@ function LoginComponent() {
         ).unwrap();
 
         toast.success("Login successful!");
-        router.push("/counterpersons"); //
+        router.push("/add-counter"); //
       } else {
         toast.error("Login failed. Please check your phone and PIN.");
       }
