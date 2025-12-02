@@ -2,17 +2,21 @@
 import { useAuth } from "@/hooks/useAuth";
 import AuthGuard  from "@/components/wrapper/AuthGuard";
 
-import CreateStep from "@/components/counterPerson/createStep";
+import CreateCounter from "@/components/executive/counterCreateStep";
 
 export default function Page() {
   const { user } = useAuth();
-  const counterPersonId = user?.id;
+  const ticketExecutiveId = user?.id;
+
+   if (!user?.id) {
+    return <p>Loading...</p>; 
+  }
 
   return (
-    <AuthGuard redirectTo="/login" requireAuth>
+    // <AuthGuard redirectTo="/login" requireAuth>
       <main>
-        <CreateStep ticketExecutiveId={counterPersonId} />
+        <CreateCounter ticketExecutiveId={ticketExecutiveId} />
       </main>
-    </AuthGuard>
+    // </AuthGuard>
   );
 }
