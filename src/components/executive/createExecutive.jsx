@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useCreateTicketExecutiveMutation } from "@/utils/redux/api/executiveApi";
-import Navbar from "@/components/ui/BottomNav";
+import Navbar from "@/components/ui/navbar";
 import AuthGuard from "@/components/wrapper/AuthGuard";
 import { toast } from "sonner";
 
@@ -47,9 +47,9 @@ export default function CreateTicketExecutivePage({ onCreated }) {
         onCreated(newExecutive?.id, newExecutive);
       }
 
-      alert("Ticket Executive Created Successfully");
+      toast.success("Ticket Executive Created Successfully");
     } catch (err) {
-      toast(err?.data?.message || "Error creating ticket executive");
+      toast.error(err?.data?.message || "Error creating ticket executive");
     }
   };
 
@@ -62,7 +62,7 @@ export default function CreateTicketExecutivePage({ onCreated }) {
       <Navbar />
 
       <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-6 lg:ml-18">
-        <h1 className="text-2xl md:text-4xl mt-20 font-extrabold text-center mb-8 bg-gradient-to-r from-[#013881] via-[#004aad] to-blue-300 bg-clip-text text-transparent">
+        <h1 className="text-2xl md:text-4xl mt-10 font-extrabold text-center mb-8 bg-gradient-to-r from-[#013881] via-[#004aad] to-blue-300 bg-clip-text text-transparent">
           Add Ticket Executive
         </h1>
 

@@ -92,7 +92,7 @@ export default function ExecutiveCommission() {
                 {executives.map((ex) => (
                   <tr
                     key={ex.id}
-                    onClick={() => router.push(`/counterpersons/${ex.id}`)}
+                    onClick={() => router.push(`/counter-persons/${ex.id}`)}
                     className="hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-black">{ex.employeeId}</td>

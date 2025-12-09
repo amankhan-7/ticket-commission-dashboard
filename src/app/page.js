@@ -17,13 +17,13 @@ export default function RedirectPage() {
     }
 
     // Authenticated but routes depend on userType
-    if (isAuthenticated && userType === "counter") {
-      router.push("/commission");
+    if (isAuthenticated && userType === "counterPerson") {
+      router.push("/booking-stats");
       return;
     }
 
     if (isAuthenticated && userType === "ticketExecutive") {
-      router.push("/counterpersons");
+      router.push("/counter-persons");
       return;
     }
 

@@ -18,8 +18,7 @@ export default function Navbar() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: "Add Counter", icon: FaReceipt, href: "/admin/addcounter" },
-    { label: "Add Executive", icon: FaTicketAlt, href: "/admin/addexecutive" },
+    { label: "Add Executive", icon: FaTicketAlt, href: "/admin/add-executive" },
     {
       label: "Assign Counter",
       icon: FaFileExcel,
@@ -33,7 +32,7 @@ export default function Navbar() {
     {
       label: "All Executives",
       icon: FaListAlt,
-      href: "/admin/ticket-executive",
+      href: "/admin/ticket-executives",
     },
   ];
 

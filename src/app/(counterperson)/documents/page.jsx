@@ -6,6 +6,7 @@ import {
   useDeleteDocumentMutation,
 } from "@/utils/redux/api/adminExecutiveApi";
 import BottomNav from "@/components/ui/BottomNav"
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import LoadingPage from "@/components/loading";
 import { skipToken } from "@reduxjs/toolkit/query";
@@ -38,12 +39,12 @@ export default function DocumentsStep() {
         documentType: type,
         file,
       }).unwrap();
-
+      toast.success("Documents uploded successfully")
       setFile(null);
       setType("");
     } catch (error) {
       setHasUploadError(true);
-      toast("Document upload failed");
+      toast.error("Document upload failed");
     }
   };
 

@@ -2,7 +2,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import AuthGuard  from "@/components/wrapper/AuthGuard";
 
-import CreateCounter from "@/components/executive/counterCreateStep";
+import CreateCounter from "@/components/executive/createCounterPerson";
 
 export default function Page() {
   const { user } = useAuth();
